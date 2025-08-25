@@ -1,0 +1,51 @@
+// vite.config.ts
+import { defineConfig } from "file:///home/project/node_modules/vite/dist/node/index.js";
+import react from "file:///home/project/node_modules/@vitejs/plugin-react/dist/index.mjs";
+var vite_config_default = defineConfig({
+  plugins: [react({
+    // React Fast Refreshを最適化
+    fastRefresh: true,
+    // JSX runtimeを最適化
+    jsxRuntime: "automatic"
+  })],
+  define: {
+    global: "globalThis"
+  },
+  server: {
+    port: 5173,
+    host: true,
+    // HMR設定を最適化
+    hmr: {
+      overlay: false
+    }
+  },
+  build: {
+    // ソースマップを無効化してビルドを高速化
+    sourcemap: false,
+    // チャンク分割を最適化
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ["react", "react-dom"],
+          supabase: ["@supabase/supabase-js"]
+        }
+      }
+    },
+    // ビルドサイズを最適化
+    minify: "terser",
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true
+      }
+    }
+  },
+  // 開発時の最適化
+  optimizeDeps: {
+    include: ["react", "react-dom", "@supabase/supabase-js"]
+  }
+});
+export {
+  vite_config_default as default
+};
+//# sourceMappingURL=data:application/json;base64,ewogICJ2ZXJzaW9uIjogMywKICAic291cmNlcyI6IFsidml0ZS5jb25maWcudHMiXSwKICAic291cmNlc0NvbnRlbnQiOiBbImNvbnN0IF9fdml0ZV9pbmplY3RlZF9vcmlnaW5hbF9kaXJuYW1lID0gXCIvaG9tZS9wcm9qZWN0XCI7Y29uc3QgX192aXRlX2luamVjdGVkX29yaWdpbmFsX2ZpbGVuYW1lID0gXCIvaG9tZS9wcm9qZWN0L3ZpdGUuY29uZmlnLnRzXCI7Y29uc3QgX192aXRlX2luamVjdGVkX29yaWdpbmFsX2ltcG9ydF9tZXRhX3VybCA9IFwiZmlsZTovLy9ob21lL3Byb2plY3Qvdml0ZS5jb25maWcudHNcIjtpbXBvcnQgeyBkZWZpbmVDb25maWcgfSBmcm9tICd2aXRlJ1xuaW1wb3J0IHJlYWN0IGZyb20gJ0B2aXRlanMvcGx1Z2luLXJlYWN0J1xuXG5leHBvcnQgZGVmYXVsdCBkZWZpbmVDb25maWcoe1xuICBwbHVnaW5zOiBbcmVhY3Qoe1xuICAgIC8vIFJlYWN0IEZhc3QgUmVmcmVzaFx1MzA5Mlx1NjcwMFx1OTA2OVx1NTMxNlxuICAgIGZhc3RSZWZyZXNoOiB0cnVlLFxuICAgIC8vIEpTWCBydW50aW1lXHUzMDkyXHU2NzAwXHU5MDY5XHU1MzE2XG4gICAganN4UnVudGltZTogJ2F1dG9tYXRpYydcbiAgfSldLFxuICBkZWZpbmU6IHtcbiAgICBnbG9iYWw6ICdnbG9iYWxUaGlzJyxcbiAgfSxcbiAgc2VydmVyOiB7XG4gICAgcG9ydDogNTE3MyxcbiAgICBob3N0OiB0cnVlLFxuICAgIC8vIEhNUlx1OEEyRFx1NUI5QVx1MzA5Mlx1NjcwMFx1OTA2OVx1NTMxNlxuICAgIGhtcjoge1xuICAgICAgb3ZlcmxheTogZmFsc2VcbiAgICB9XG4gIH0sXG4gIGJ1aWxkOiB7XG4gICAgLy8gXHUzMEJEXHUzMEZDXHUzMEI5XHUzMERFXHUzMEMzXHUzMEQ3XHUzMDkyXHU3MTIxXHU1MkI5XHU1MzE2XHUzMDU3XHUzMDY2XHUzMEQzXHUzMEVCXHUzMEM5XHUzMDkyXHU5QUQ4XHU5MDFGXHU1MzE2XG4gICAgc291cmNlbWFwOiBmYWxzZSxcbiAgICAvLyBcdTMwQzFcdTMwRTNcdTMwRjNcdTMwQUZcdTUyMDZcdTUyNzJcdTMwOTJcdTY3MDBcdTkwNjlcdTUzMTZcbiAgICByb2xsdXBPcHRpb25zOiB7XG4gICAgICBvdXRwdXQ6IHtcbiAgICAgICAgbWFudWFsQ2h1bmtzOiB7XG4gICAgICAgICAgdmVuZG9yOiBbJ3JlYWN0JywgJ3JlYWN0LWRvbSddLFxuICAgICAgICAgIHN1cGFiYXNlOiBbJ0BzdXBhYmFzZS9zdXBhYmFzZS1qcyddXG4gICAgICAgIH1cbiAgICAgIH1cbiAgICB9LFxuICAgIC8vIFx1MzBEM1x1MzBFQlx1MzBDOVx1MzBCNVx1MzBBNFx1MzBCQVx1MzA5Mlx1NjcwMFx1OTA2OVx1NTMxNlxuICAgIG1pbmlmeTogJ3RlcnNlcicsXG4gICAgdGVyc2VyT3B0aW9uczoge1xuICAgICAgY29tcHJlc3M6IHtcbiAgICAgICAgZHJvcF9jb25zb2xlOiB0cnVlLFxuICAgICAgICBkcm9wX2RlYnVnZ2VyOiB0cnVlXG4gICAgICB9XG4gICAgfVxuICB9LFxuICAvLyBcdTk1OEJcdTc2N0FcdTY2NDJcdTMwNkVcdTY3MDBcdTkwNjlcdTUzMTZcbiAgb3B0aW1pemVEZXBzOiB7XG4gICAgaW5jbHVkZTogWydyZWFjdCcsICdyZWFjdC1kb20nLCAnQHN1cGFiYXNlL3N1cGFiYXNlLWpzJ11cbiAgfVxufSkiXSwKICAibWFwcGluZ3MiOiAiO0FBQXlOLFNBQVMsb0JBQW9CO0FBQ3RQLE9BQU8sV0FBVztBQUVsQixJQUFPLHNCQUFRLGFBQWE7QUFBQSxFQUMxQixTQUFTLENBQUMsTUFBTTtBQUFBO0FBQUEsSUFFZCxhQUFhO0FBQUE7QUFBQSxJQUViLFlBQVk7QUFBQSxFQUNkLENBQUMsQ0FBQztBQUFBLEVBQ0YsUUFBUTtBQUFBLElBQ04sUUFBUTtBQUFBLEVBQ1Y7QUFBQSxFQUNBLFFBQVE7QUFBQSxJQUNOLE1BQU07QUFBQSxJQUNOLE1BQU07QUFBQTtBQUFBLElBRU4sS0FBSztBQUFBLE1BQ0gsU0FBUztBQUFBLElBQ1g7QUFBQSxFQUNGO0FBQUEsRUFDQSxPQUFPO0FBQUE7QUFBQSxJQUVMLFdBQVc7QUFBQTtBQUFBLElBRVgsZUFBZTtBQUFBLE1BQ2IsUUFBUTtBQUFBLFFBQ04sY0FBYztBQUFBLFVBQ1osUUFBUSxDQUFDLFNBQVMsV0FBVztBQUFBLFVBQzdCLFVBQVUsQ0FBQyx1QkFBdUI7QUFBQSxRQUNwQztBQUFBLE1BQ0Y7QUFBQSxJQUNGO0FBQUE7QUFBQSxJQUVBLFFBQVE7QUFBQSxJQUNSLGVBQWU7QUFBQSxNQUNiLFVBQVU7QUFBQSxRQUNSLGNBQWM7QUFBQSxRQUNkLGVBQWU7QUFBQSxNQUNqQjtBQUFBLElBQ0Y7QUFBQSxFQUNGO0FBQUE7QUFBQSxFQUVBLGNBQWM7QUFBQSxJQUNaLFNBQVMsQ0FBQyxTQUFTLGFBQWEsdUJBQXVCO0FBQUEsRUFDekQ7QUFDRixDQUFDOyIsCiAgIm5hbWVzIjogW10KfQo=
