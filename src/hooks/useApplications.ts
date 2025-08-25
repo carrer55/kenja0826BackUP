@@ -73,10 +73,16 @@ export function useApplications() {
         .from('applications')
         .select(`
           *,
-          user_profiles(full_name, department, position),
-          organizations(name),
-          expense_items(*),
-          business_trip_details(*)
+          user_profiles (
+            full_name,
+            department,
+            position
+          ),
+          organizations (
+            name
+          ),
+          expense_items (*),
+          business_trip_details (*)
         `)
         .eq('user_id', user?.id)
         .order('created_at', { ascending: false })
@@ -109,28 +115,29 @@ export function useApplications() {
       // 組織IDを取得または作成
       let organizationId = profile?.default_organization_id;
       
-      if (!organizationId) {
-        // 組織を作成
-        const { data: newOrg, error: orgError } = await supabase
-          .from('organizations')
-          .insert({
-            name: profile?.company_name || 'デフォルト組織',
-            owner_id: user.id,
-            description: '自動作成された組織'
-          })
-          .select()
-          .single();
+      if (!organizationId && profile?.company_name) {
+        try {
+          const { data: newOrg, error: orgError } = await supabase
+            .from('organizations')
+            .insert({
+              name: profile.company_name,
+              owner_id: user.id,
+              description: `${profile.company_name}の組織`
+            })
+            .select()
+            .single();
 
-        if (orgError) {
+          if (!orgError && newOrg) {
+            organizationId = newOrg.id;
+            
+            // プロフィールに組織IDを設定
+            await supabase
+              .from('user_profiles')
+              .update({ default_organization_id: organizationId })
+              .eq('id', user.id);
+          }
+        } catch (orgError) {
           console.error('Organization creation error:', orgError);
-        } else {
-          organizationId = newOrg.id;
-          
-          // プロフィールに組織IDを設定
-          await supabase
-            .from('user_profiles')
-            .update({ default_organization_id: organizationId })
-            .eq('id', user.id);
         }
       }
 
@@ -180,7 +187,7 @@ export function useApplications() {
           date: item.date,
           amount: item.amount,
           description: item.description,
-          category_id: item.categoryId || null
+          category_id: null // カテゴリIDは後で実装
         }))
 
         const { error: expenseError } = await supabase
@@ -207,7 +214,10 @@ export function useApplications() {
     try {
       const { data, error: updateError } = await supabase
         .from('applications')
-        .update(updates)
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', id)
         .select()
         .single()
@@ -233,7 +243,8 @@ export function useApplications() {
         .from('applications')
         .update({ 
           status: 'pending', 
-          submitted_at: new Date().toISOString() 
+          submitted_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         })
         .eq('id', id)
         .select()
@@ -282,7 +293,6 @@ export function useApplications() {
     comment?: string
   ) => {
     try {
-      // 直接データベースを更新（Edge Functionを使わない）
       const updates: any = {
         status: action,
         updated_at: new Date().toISOString()

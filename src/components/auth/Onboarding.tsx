@@ -34,7 +34,6 @@ function Onboarding({ onNavigate, onComplete }: OnboardingProps) {
 
     try {
       const result = await updateProfile({
-        email: user.email || '',
         full_name: formData.fullName,
         company_name: formData.companyName,
         position: formData.position,

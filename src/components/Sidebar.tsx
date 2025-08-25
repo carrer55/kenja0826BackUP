@@ -142,8 +142,8 @@ function Sidebar({ isOpen, onClose, onNavigate, currentView = 'dashboard' }: Sid
               } else {
                 // 通常のログアウト処理
                 try {
-                  const { signOut } = await import('../hooks/useAuth');
-                  // ログアウト処理は AuthWrapper で useAuth フックを通じて処理される
+                  const { signOut } = await import('../lib/supabase');
+                  await signOut();
                   window.location.reload();
                 } catch (error) {
                   console.error('Logout error:', error);

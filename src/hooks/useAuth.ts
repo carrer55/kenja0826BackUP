@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
-import { supabase, UserProfile, getCurrentUserProfile } from '../lib/supabase';
+import { 
+  supabase, 
+  UserProfile, 
+  getCurrentUser, 
+  getCurrentUserProfile, 
+  createUserProfile,
+  updateUserProfile,
+  createOrganization,
+  getUserOrganizations
+} from '../lib/supabase';
 
 interface AuthState {
   user: User | null;
@@ -58,7 +67,7 @@ export function useAuth() {
               user: null,
               profile: null,
               loading: false,
-              error: null // エラーを表示せずに未認証状態にする
+              error: null
             });
           }
           return;
@@ -243,6 +252,24 @@ export function useAuth() {
         return { success: false, error: error.message };
       }
 
+      // ユーザー登録成功時にプロフィールを作成
+      if (data.user && profileData) {
+        try {
+          await createUserProfile(data.user.id, {
+            full_name: profileData.full_name,
+            company_name: profileData.company_name,
+            position: profileData.position,
+            phone: profileData.phone,
+            department: '',
+            role: 'user',
+            onboarding_completed: false
+          });
+        } catch (profileError) {
+          console.error('Profile creation error:', profileError);
+          // プロフィール作成エラーでも登録は成功とする
+        }
+      }
+
       setAuthState(prev => ({ ...prev, loading: false }));
       return { success: true, user: data.user };
     } catch (error) {
@@ -318,6 +345,33 @@ export function useAuth() {
       if (error) {
         setAuthState(prev => ({ ...prev, loading: false, error: error.message }));
         return { success: false, error: error.message };
+      }
+
+      // 組織が設定されていない場合は作成
+      if (!data.default_organization_id && data.company_name) {
+        try {
+          const organization = await createOrganization(data.company_name, `${data.company_name}の組織`);
+          
+          // プロフィールに組織IDを設定
+          const { data: updatedProfile, error: updateError } = await supabase
+            .from('user_profiles')
+            .update({ default_organization_id: organization.id })
+            .eq('id', authState.user.id)
+            .select()
+            .single();
+
+          if (!updateError) {
+            setAuthState(prev => ({
+              ...prev,
+              profile: updatedProfile,
+              loading: false,
+              error: null
+            }));
+            return { success: true, profile: updatedProfile };
+          }
+        } catch (orgError) {
+          console.error('Organization creation error:', orgError);
+        }
       }
 
       setAuthState(prev => ({
