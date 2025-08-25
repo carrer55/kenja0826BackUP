@@ -14,14 +14,21 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+    cors: true,
     // HMR設定を最適化
     hmr: {
-      overlay: false
+      overlay: true,
+      port: 5173
     }
+  },
+  preview: {
+    port: 5173,
+    host: true,
+    cors: true
   },
   build: {
     // ソースマップを無効化してビルドを高速化
-    sourcemap: false,
+    sourcemap: true,
     // チャンク分割を最適化
     rollupOptions: {
       output: {
@@ -35,7 +42,7 @@ export default defineConfig({
     minify: 'terser',
     terserOptions: {
       compress: {
-        drop_console: true,
+        drop_console: false,
         drop_debugger: true
       }
     }

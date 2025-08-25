@@ -27,12 +27,17 @@ function Onboarding({ onNavigate, onComplete }: OnboardingProps) {
       return;
     }
 
+    console.log('Onboarding submit - User:', !!user)
+    console.log('Form data:', formData)
+
     if (!user) {
       setError('ユーザー情報が見つかりません');
+      console.error('User is null during onboarding')
       return;
     }
 
     try {
+      setError('') // エラーをクリア
       const result = await updateProfile({
         full_name: formData.fullName,
         company_name: formData.companyName,
@@ -43,9 +48,13 @@ function Onboarding({ onNavigate, onComplete }: OnboardingProps) {
         onboarding_completed: true
       });
 
+      console.log('Profile update result:', result)
+
       if (result.success) {
+        console.log('Onboarding completed successfully')
         onComplete();
       } else {
+        console.error('Profile update failed:', result.error)
         setError(result.error || '登録に失敗しました。もう一度お試しください。');
       }
     } catch (error) {

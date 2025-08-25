@@ -111,7 +111,9 @@ export function useAuth() {
     // 通常の認証処理
     const getInitialUser = async () => {
       try {
+        console.log('Getting initial user...')
         const { data: { user }, error } = await supabase.auth.getUser()
+        console.log('Initial user result:', { user: !!user, error })
         if (!mounted) return
 
         if (error) throw error
@@ -119,6 +121,7 @@ export function useAuth() {
         setUser(user)
         
         if (user) {
+          console.log('Fetching user profile for:', user.id)
           await fetchUserProfile(user.id)
         }
       } catch (err) {
@@ -138,6 +141,7 @@ export function useAuth() {
         if (!mounted) return
 
         console.log('Auth event:', event)
+        console.log('Session:', !!session)
         setUser(session?.user || null)
         setError(null)
         setLoading(false)

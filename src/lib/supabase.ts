@@ -1,12 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'http://localhost:54321'
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'
 
-if (!supabaseUrl || !supabaseKey) {
-  console.error('Supabase environment variables are missing')
-  throw new Error('Missing Supabase environment variables. Please check your .env file.')
-}
+console.log('Supabase URL:', supabaseUrl)
+console.log('Supabase Key exists:', !!supabaseKey)
 
 // シングルトンパターンでSupabaseクライアントを作成
 let supabaseInstance: ReturnType<typeof createClient> | null = null
@@ -31,6 +29,16 @@ export const supabase = (() => {
         }
       }
     })
+    
+    // 接続テスト
+    supabaseInstance.from('user_profiles').select('count', { count: 'exact', head: true })
+      .then(({ error }) => {
+        if (error) {
+          console.error('Supabase connection test failed:', error)
+        } else {
+          console.log('Supabase connection successful')
+        }
+      })
   }
   return supabaseInstance
 })()

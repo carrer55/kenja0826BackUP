@@ -11,6 +11,15 @@ const hideLoading = () => {
   }
 }
 
+// エラーハンドリング
+window.addEventListener('error', (event) => {
+  console.error('Global error:', event.error)
+})
+
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('Unhandled promise rejection:', event.reason)
+})
+
 // React 18の新しいcreateRootを使用
 const root = ReactDOM.createRoot(document.getElementById('root')!)
 
@@ -22,4 +31,4 @@ root.render(
 )
 
 // レンダリング完了後にローディングを非表示
-setTimeout(hideLoading, 100)
+setTimeout(hideLoading, 500)

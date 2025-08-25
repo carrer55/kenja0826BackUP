@@ -11,6 +11,14 @@ import Dashboard from './Dashboard'
 export function AuthWrapper() {
   const { user, profile, loading, error } = useAuth()
   const [currentView, setCurrentView] = useState<string>('login')
+  const [isInitialized, setIsInitialized] = useState(false)
+
+  useEffect(() => {
+    // 初期化完了を待つ
+    if (!loading) {
+      setIsInitialized(true)
+    }
+  }, [loading])
 
   const handleNavigate = (view: string) => {
     setCurrentView(view)
@@ -29,7 +37,7 @@ export function AuthWrapper() {
     setCurrentView('dashboard')
   }
 
-  if (loading) {
+  if (loading || !isInitialized) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -37,7 +45,7 @@ export function AuthWrapper() {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-navy-600"></div>
           </div>
           <p className="mt-4 text-center text-sm text-slate-600">
-            認証情報を確認中...
+            {loading ? '認証情報を確認中...' : 'アプリケーションを初期化中...'}
           </p>
         </div>
       </div>
