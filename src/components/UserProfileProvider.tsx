@@ -28,9 +28,8 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
         setProfile(result.profile);
         // ローカルストレージも更新（デモモード対応）
         localStorage.setItem('userProfile', JSON.stringify(result.profile));
-      } else {
-        throw new Error(result.error || 'Profile update failed');
       }
+      return result;
     } catch (error) {
       console.error('Profile update error:', error);
       throw error;
@@ -44,8 +43,8 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
     
     setLoading(true);
     try {
-      // プロフィールを再取得する処理
-      // useAuthフックが自動的に最新のプロフィールを取得
+      // プロフィールを再取得
+      setProfile(authProfile);
     } finally {
       setLoading(false);
     }

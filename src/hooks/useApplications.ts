@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase, approveApplication, syncToAccounting, generateDocument } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 
 export interface Application {
@@ -49,7 +49,7 @@ export interface Application {
 
 export function useApplications() {
   const [applications, setApplications] = useState<Application[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { user, profile } = useAuth()
 
@@ -90,7 +90,7 @@ export function useApplications() {
     } catch (err) {
       console.error('Applications fetch error:', err)
       setError(err instanceof Error ? err.message : 'Failed to fetch applications')
-      setApplications([]) // エラー時は空配列を設定
+      setApplications([])
     } finally {
       setLoading(false)
     }
@@ -102,19 +102,48 @@ export function useApplications() {
     data: any
   ) => {
     try {
-      if (!user || !profile?.default_organization_id) {
-        throw new Error('User not authenticated or no organization')
+      if (!user) {
+        throw new Error('User not authenticated')
+      }
+
+      // 組織IDを取得または作成
+      let organizationId = profile?.default_organization_id;
+      
+      if (!organizationId) {
+        // 組織を作成
+        const { data: newOrg, error: orgError } = await supabase
+          .from('organizations')
+          .insert({
+            name: profile?.company_name || 'デフォルト組織',
+            owner_id: user.id,
+            description: '自動作成された組織'
+          })
+          .select()
+          .single();
+
+        if (orgError) {
+          console.error('Organization creation error:', orgError);
+        } else {
+          organizationId = newOrg.id;
+          
+          // プロフィールに組織IDを設定
+          await supabase
+            .from('user_profiles')
+            .update({ default_organization_id: organizationId })
+            .eq('id', user.id);
+        }
       }
 
       const { data: newApp, error: createError } = await supabase
         .from('applications')
         .insert({
           user_id: user.id,
-          organization_id: profile.default_organization_id,
+          organization_id: organizationId,
           type,
           title,
           description: data.description || null,
           data,
+          total_amount: calculateTotalAmount(type, data),
           status: 'draft'
         })
         .select()
@@ -253,20 +282,32 @@ export function useApplications() {
     comment?: string
   ) => {
     try {
-      const result = await approveApplication(applicationId, action, comment)
-      
-      // 承認後に会計システムと同期（承認の場合のみ）
+      // 直接データベースを更新（Edge Functionを使わない）
+      const updates: any = {
+        status: action,
+        updated_at: new Date().toISOString()
+      };
+
       if (action === 'approved') {
-        try {
-          await syncToAccounting(applicationId)
-        } catch (syncError) {
-          console.warn('Accounting sync failed:', syncError)
-          // 会計同期の失敗は承認処理を止めない
-        }
+        updates.approved_at = new Date().toISOString();
+        updates.approved_by = user?.id;
+      } else if (action === 'rejected' || action === 'returned') {
+        updates.rejection_reason = comment;
+      }
+
+      const { data, error } = await supabase
+        .from('applications')
+        .update(updates)
+        .eq('id', applicationId)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
       }
 
       await fetchApplications()
-      return { success: true, result }
+      return { success: true, result: data }
     } catch (err) {
       console.error('Approval error:', err)
       return { 
@@ -287,4 +328,17 @@ export function useApplications() {
     handleApproval,
     refreshApplications: fetchApplications
   }
+}
+
+function calculateTotalAmount(type: string, data: any): number {
+  if (type === 'business_trip' && data.tripDetails) {
+    const { estimatedDailyAllowance = 0, estimatedTransportation = 0, estimatedAccommodation = 0 } = data.tripDetails;
+    return estimatedDailyAllowance + estimatedTransportation + estimatedAccommodation;
+  }
+  
+  if (type === 'expense' && data.expenseItems) {
+    return data.expenseItems.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
+  }
+  
+  return 0;
 }

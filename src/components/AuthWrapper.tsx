@@ -21,25 +21,8 @@ function AuthWrapper() {
   } = useAuth();
 
   useEffect(() => {
-    // URLパラメータの処理
-    const urlParams = new URLSearchParams(window.location.search);
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    
-    const accessToken = hashParams.get('access_token');
-    const refreshToken = hashParams.get('refresh_token');
-    const error = urlParams.get('error') || hashParams.get('error');
-    const errorDescription = urlParams.get('error_description') || hashParams.get('error_description');
-    
-    if (error) {
-      console.error('Auth error:', error, errorDescription);
-      setCurrentView('login');
-      // URLパラメータをクリア
-      window.history.replaceState({}, document.title, window.location.pathname);
-      return;
-    }
-
-    if (accessToken && refreshToken) {
-      // URLパラメータをクリア
+    // URLパラメータのクリア（必要に応じて）
+    if (window.location.hash || window.location.search) {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
@@ -49,11 +32,11 @@ function AuthWrapper() {
 
     if (isAuthenticated && user) {
       if (!isEmailConfirmed) {
-        setCurrentView('login');
+        setCurrentView('email-confirmed');
       } else if (!isOnboardingCompleted) {
         setCurrentView('onboarding');
       } else {
-        // 認証完了
+        // 認証完了 - Dashboardが表示される
         return;
       }
     } else {
@@ -62,11 +45,11 @@ function AuthWrapper() {
   }, [isAuthenticated, user, profile, loading, isEmailConfirmed, isOnboardingCompleted]);
 
   const handleLoginSuccess = () => {
-    // useAuthフックが自動的に状態を更新するため、何もしない
+    // useAuthフックが自動的に状態を更新
   };
 
   const handleOnboardingComplete = () => {
-    // useAuthフックが自動的に状態を更新するため、何もしない
+    // useAuthフックが自動的に状態を更新
   };
 
   const navigateToView = (view: string) => {
@@ -81,9 +64,6 @@ function AuthWrapper() {
             <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
           </div>
           <p className="text-slate-600">読み込み中...</p>
-          {error && (
-            <p className="text-red-600 text-sm mt-2">{error}</p>
-          )}
         </div>
       </div>
     );

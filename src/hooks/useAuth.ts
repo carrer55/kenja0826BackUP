@@ -52,27 +52,40 @@ export function useAuth() {
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
+          console.error('Session error:', error);
           if (mounted) {
             setAuthState({
               user: null,
               profile: null,
               loading: false,
-              error: error.message
+              error: null // エラーを表示せずに未認証状態にする
             });
           }
           return;
         }
 
         if (session?.user) {
-          const profile = await getCurrentUserProfile();
-          
-          if (mounted) {
-            setAuthState({
-              user: session.user,
-              profile,
-              loading: false,
-              error: null
-            });
+          try {
+            const profile = await getCurrentUserProfile();
+            
+            if (mounted) {
+              setAuthState({
+                user: session.user,
+                profile,
+                loading: false,
+                error: null
+              });
+            }
+          } catch (profileError) {
+            console.error('Profile fetch error:', profileError);
+            if (mounted) {
+              setAuthState({
+                user: session.user,
+                profile: null,
+                loading: false,
+                error: null
+              });
+            }
           }
         } else {
           if (mounted) {
@@ -91,7 +104,7 @@ export function useAuth() {
             user: null,
             profile: null,
             loading: false,
-            error: 'Authentication initialization failed'
+            error: null
           });
         }
       }
@@ -173,14 +186,25 @@ export function useAuth() {
       }
 
       if (data.user) {
-        const profile = await getCurrentUserProfile();
-        setAuthState({
-          user: data.user,
-          profile,
-          loading: false,
-          error: null
-        });
-        return { success: true, user: data.user, profile };
+        try {
+          const profile = await getCurrentUserProfile();
+          setAuthState({
+            user: data.user,
+            profile,
+            loading: false,
+            error: null
+          });
+          return { success: true, user: data.user, profile };
+        } catch (profileError) {
+          console.error('Profile fetch error after sign in:', profileError);
+          setAuthState({
+            user: data.user,
+            profile: null,
+            loading: false,
+            error: null
+          });
+          return { success: true, user: data.user, profile: null };
+        }
       }
 
       return { success: false, error: 'Unknown error occurred' };
@@ -217,29 +241,6 @@ export function useAuth() {
       if (error) {
         setAuthState(prev => ({ ...prev, loading: false, error: error.message }));
         return { success: false, error: error.message };
-      }
-
-      // プロフィールデータがある場合は、ユーザー作成後にプロフィールを更新
-      if (data.user && profileData) {
-        try {
-          const { error: profileError } = await supabase
-            .from('user_profiles')
-            .upsert({
-              id: data.user.id,
-              email: data.user.email || '',
-              full_name: profileData.full_name,
-              company_name: profileData.company_name,
-              position: profileData.position,
-              phone: profileData.phone,
-              onboarding_completed: true
-            });
-
-          if (profileError) {
-            console.error('Profile creation error:', profileError);
-          }
-        } catch (profileError) {
-          console.error('Profile creation failed:', profileError);
-        }
       }
 
       setAuthState(prev => ({ ...prev, loading: false }));
@@ -302,10 +303,15 @@ export function useAuth() {
         throw new Error('User not authenticated');
       }
 
+      // プロフィールの作成または更新
       const { data, error } = await supabase
         .from('user_profiles')
-        .update(updates)
-        .eq('id', authState.user.id)
+        .upsert({
+          id: authState.user.id,
+          email: authState.user.email || '',
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
         .select()
         .single();
 
@@ -354,7 +360,7 @@ export function useAuth() {
     updateProfile,
     resetPassword,
     isAuthenticated: !!authState.user,
-    isEmailConfirmed: !!authState.user?.email_confirmed_at,
-    isOnboardingCompleted: !!authState.profile?.onboarding_completed
+    isEmailConfirmed: !!authState.user?.email_confirmed_at || localStorage.getItem('demoMode') === 'true',
+    isOnboardingCompleted: !!authState.profile?.onboarding_completed || localStorage.getItem('demoMode') === 'true'
   };
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase, sendNotification } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 
 export interface Notification {
@@ -17,7 +17,7 @@ export interface Notification {
 export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { user } = useAuth()
 
@@ -101,7 +101,7 @@ export function useNotifications() {
     try {
       const { error: updateError } = await supabase
         .from('notifications')
-        .update({ read: true })
+        .update({ read: true, read_at: new Date().toISOString() })
         .eq('id', notificationId)
 
       if (updateError) {
@@ -129,7 +129,7 @@ export function useNotifications() {
     try {
       const { error: updateError } = await supabase
         .from('notifications')
-        .update({ read: true })
+        .update({ read: true, read_at: new Date().toISOString() })
         .eq('user_id', user?.id)
         .eq('read', false)
 
@@ -180,25 +180,6 @@ export function useNotifications() {
     }
   }
 
-  const sendCustomNotification = async (
-    userId: string,
-    type: 'email' | 'push' | 'both',
-    title: string,
-    message: string,
-    data?: any
-  ) => {
-    try {
-      const result = await sendNotification(userId, type, title, message, data)
-      return { success: true, result }
-    } catch (err) {
-      console.error('Send notification error:', err)
-      return { 
-        success: false, 
-        error: err instanceof Error ? err.message : 'Failed to send notification' 
-      }
-    }
-  }
-
   const requestNotificationPermission = async () => {
     if ('Notification' in window) {
       const permission = await Notification.requestPermission()
@@ -215,7 +196,6 @@ export function useNotifications() {
     markAsRead,
     markAllAsRead,
     deleteNotification,
-    sendCustomNotification,
     requestNotificationPermission,
     refreshNotifications: fetchNotifications
   }
