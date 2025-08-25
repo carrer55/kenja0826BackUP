@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://xhlunauofzuinzhxgqti.supabase.co'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhobHVuYXVvZnp1aW56aHhncXRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU3NDc0MzYsImV4cCI6MjA3MTMyMzQzNn0.W2aKboc8i4ObqVM8QlLwqAvUXI2D1dg6jVP14QFXawU'
+const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhobHVuYXVvZnp1aW56aHhncXRpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTc0NzQzNiwiZXhwIjoyMDcxMzIzNDM2fQ.f3JBLtmRZbySWi28G9inB8qLhhlOglKLaAgQtqsfa0o'
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables')
@@ -16,6 +17,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 })
 
+// Service role client for admin operations
+export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+})
 // 型定義
 export interface UserProfile {
   id: string

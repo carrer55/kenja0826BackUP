@@ -73,12 +73,12 @@ export function useApplications() {
         .from('applications')
         .select(`
           *,
-          user_profiles (
+          user_profiles!applications_user_id_fkey (
             full_name,
             department,
             position
           ),
-          organizations (
+          organizations!applications_organization_id_fkey (
             name
           ),
           expense_items (*),
