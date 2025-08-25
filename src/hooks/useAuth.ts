@@ -82,9 +82,24 @@ export function useAuth() {
 
   const signOut = async () => {
     setLoading(true)
+    setError(null)
     try {
       const { error } = await supabase.auth.signOut()
       if (error) throw error
+      
+      // ローカルストレージのクリア
+      localStorage.removeItem('userProfile')
+      localStorage.removeItem('demoMode')
+      localStorage.removeItem('demoSession')
+      localStorage.removeItem('travelRegulations')
+      localStorage.removeItem('notificationSettings')
+      localStorage.removeItem('approvalReminderRules')
+      localStorage.removeItem('approvalReminderGlobalSettings')
+      
+      // ユーザー状態をクリア
+      setUser(null)
+      
+      return { success: true }
       
       // ローカルストレージのクリア
       localStorage.removeItem('userProfile')
@@ -94,6 +109,9 @@ export function useAuth() {
       return { success: true }
     } catch (err) {
       console.error('Sign out error:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Sign out failed'
+      setError(errorMessage)
+      return { success: false, error: errorMessage }
       return { success: false, error: err instanceof Error ? err.message : 'Sign out failed' }
     } finally {
       setLoading(false)

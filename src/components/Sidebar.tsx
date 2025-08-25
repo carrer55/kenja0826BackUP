@@ -29,6 +29,38 @@ interface SidebarProps {
 }
 
 function Sidebar({ isOpen, onClose, onNavigate, currentView = 'dashboard' }: SidebarProps) {
+  const { signOut } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      // デモモードの場合はローカルストレージをクリア
+      if (localStorage.getItem('demoMode') === 'true') {
+        localStorage.removeItem('demoMode');
+        localStorage.removeItem('demoSession');
+        localStorage.removeItem('userProfile');
+        localStorage.removeItem('travelRegulations');
+        localStorage.removeItem('notificationSettings');
+        localStorage.removeItem('approvalReminderRules');
+        localStorage.removeItem('approvalReminderGlobalSettings');
+        window.location.reload();
+      } else {
+        // 通常のログアウト処理
+        const result = await signOut();
+        if (result.success) {
+          window.location.reload();
+        } else {
+          console.error('Logout error:', result.error);
+          // エラーが発生してもログアウトを強制実行
+          window.location.reload();
+        }
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+      // エラーが発生してもログアウトを強制実行
+      window.location.reload();
+    }
+  };
+
   const handleMenuClick = (view: string) => {
     if (onNavigate) {
       onNavigate(view);
@@ -132,25 +164,7 @@ function Sidebar({ isOpen, onClose, onNavigate, currentView = 'dashboard' }: Sid
             </div>
           </div>
           <button 
-            onClick={async () => {
-              // デモモードの場合はローカルストレージをクリア
-              if (localStorage.getItem('demoMode') === 'true') {
-                localStorage.removeItem('demoMode');
-                localStorage.removeItem('demoSession');
-                localStorage.removeItem('userProfile');
-                window.location.reload();
-              } else {
-                // 通常のログアウト処理
-                try {
-                  const { signOut } = await import('../lib/supabase');
-                  await signOut();
-                  window.location.reload();
-                } catch (error) {
-                  console.error('Logout error:', error);
-                  window.location.reload();
-                }
-              }
-            }}
+            onClick={handleLogout}
             className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-white/30 hover:bg-white/50 rounded-lg border border-white/40 transition-all duration-200 backdrop-blur-sm hover:shadow-lg"
           >
             <LogOut className="w-4 h-4 text-slate-700" />

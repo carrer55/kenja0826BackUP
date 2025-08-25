@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Settings, CreditCard, Bell, Users, HelpCircle, Edit, Save, Eye, EyeOff, Link } from 'lucide-react';
+import { User, Settings, CreditCard, Bell, Users, HelpCircle, Edit, Save, Eye, EyeOff, Link, LogOut } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
@@ -31,6 +31,7 @@ interface NotificationSettings {
 }
 
 function MyPage({ onNavigate }: MyPageProps) {
+  const { signOut } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('profile');
   const [showPasswordChange, setShowPasswordChange] = useState(false);
@@ -90,6 +91,38 @@ function MyPage({ onNavigate }: MyPageProps) {
     setUserProfile(updatedProfile);
     localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
     alert(`プランが${newPlan}に変更されました`);
+  };
+
+  const handleLogout = async () => {
+    if (confirm('ログアウトしてもよろしいですか？')) {
+      try {
+        // デモモードの場合はローカルストレージをクリア
+        if (localStorage.getItem('demoMode') === 'true') {
+          localStorage.removeItem('demoMode');
+          localStorage.removeItem('demoSession');
+          localStorage.removeItem('userProfile');
+          localStorage.removeItem('travelRegulations');
+          localStorage.removeItem('notificationSettings');
+          localStorage.removeItem('approvalReminderRules');
+          localStorage.removeItem('approvalReminderGlobalSettings');
+          window.location.reload();
+        } else {
+          // 通常のログアウト処理
+          const result = await signOut();
+          if (result.success) {
+            window.location.reload();
+          } else {
+            console.error('Logout error:', result.error);
+            // エラーが発生してもログアウトを強制実行
+            window.location.reload();
+          }
+        }
+      } catch (error) {
+        console.error('Logout error:', error);
+        // エラーが発生してもログアウトを強制実行
+        window.location.reload();
+      }
+    }
   };
 
   const tabs = [
@@ -666,6 +699,17 @@ function MyPage({ onNavigate }: MyPageProps) {
               </div>
             </div>
           )}
+
+          {/* ログアウトボタン */}
+          <div className="fixed bottom-6 right-6 z-50">
+            <button
+              onClick={handleLogout}
+              className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 text-white rounded-lg font-medium shadow-xl hover:shadow-2xl transition-all duration-200 transform hover:scale-105"
+            >
+              <LogOut className="w-5 h-5" />
+              <span>ログアウト</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
