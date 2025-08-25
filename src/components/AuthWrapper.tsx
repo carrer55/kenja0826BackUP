@@ -1,6 +1,6 @@
 import React from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { LoginForm } from './LoginForm'
+import Login from './auth/Login'
 import Dashboard from './Dashboard'
 
 interface AuthWrapperProps {
@@ -12,12 +12,12 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <div className="flex justify-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-navy-600"></div>
           </div>
-          <p className="mt-4 text-center text-sm text-gray-600">
+          <p className="mt-4 text-center text-sm text-slate-600">
             認証情報を確認中...
           </p>
         </div>
@@ -27,7 +27,7 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
             <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
@@ -43,7 +43,7 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
             </p>
             <button
               onClick={() => window.location.reload()}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-navy-600 hover:bg-navy-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-navy-500"
             >
               再読み込み
             </button>
@@ -54,7 +54,7 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
   }
 
   if (!user) {
-    return <LoginForm />
+    return <Login onNavigate={() => {}} onLoginSuccess={() => window.location.reload()} />
   }
 
   return <Dashboard />

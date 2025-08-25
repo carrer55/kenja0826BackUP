@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bell, HelpCircle, MessageCircle, User, Menu, LogOut } from 'lucide-react';
+import { Bell, HelpCircle, MessageCircle, User, Menu } from 'lucide-react';
 import { useNotifications } from '../hooks/useNotifications';
 
 interface TopBarProps {
@@ -89,4 +89,4 @@ function TopBar({ onMenuClick, onNavigate, onShowNotifications }: TopBarProps) {
   );
 }
 
-export default TopBar;
+export default Sidebar;
