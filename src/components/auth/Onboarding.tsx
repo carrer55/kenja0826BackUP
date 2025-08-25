@@ -32,21 +32,26 @@ function Onboarding({ onNavigate, onComplete }: OnboardingProps) {
       return;
     }
 
-    const result = await updateProfile({
-      email: user.email || '',
-      full_name: formData.fullName,
-      company_name: formData.companyName,
-      position: formData.position,
-      phone: formData.phone,
-      department: '',
-      role: 'user',
-      onboarding_completed: true
-    });
+    try {
+      const result = await updateProfile({
+        email: user.email || '',
+        full_name: formData.fullName,
+        company_name: formData.companyName,
+        position: formData.position,
+        phone: formData.phone,
+        department: '',
+        role: 'user',
+        onboarding_completed: true
+      });
 
-    if (result.success) {
-      onComplete();
-    } else {
-      setError(result.error || '登録に失敗しました。もう一度お試しください。');
+      if (result.success) {
+        onComplete();
+      } else {
+        setError(result.error || '登録に失敗しました。もう一度お試しください。');
+      }
+    } catch (error) {
+      console.error('Onboarding error:', error);
+      setError('登録に失敗しました。もう一度お試しください。');
     }
   };
 

@@ -185,7 +185,7 @@ export function useAuth() {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${window.location.origin}`,
           data: profileData ? {
             full_name: profileData.full_name,
             company_name: profileData.company_name,
@@ -313,7 +313,7 @@ export function useAuth() {
   const resetPassword = async (email: string) => {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}`,
       });
 
       if (error) {

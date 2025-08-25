@@ -62,19 +62,23 @@ function Register({ onNavigate }: RegisterProps) {
   });
 
   const onSubmit = async (data: RegisterFormData) => {
-    // ユーザー登録とプロフィール作成を同時に実行
-    const result = await signUp(data.email, data.password, {
-      full_name: data.fullName,
-      company_name: data.companyName,
-      position: data.position,
-      phone: data.phone
-    });
+    try {
+      // ユーザー登録とプロフィール作成を同時に実行
+      const result = await signUp(data.email, data.password, {
+        full_name: data.fullName,
+        company_name: data.companyName,
+        position: data.position,
+        phone: data.phone
+      });
     
-    if (result.success) {
-      onNavigate('register-success');
-    } else if (result.error?.includes('already') || result.error?.includes('registered')) {
-      // 既に登録済みの場合も成功画面に遷移
-      onNavigate('register-success');
+      if (result.success) {
+        onNavigate('register-success');
+      } else if (result.error?.includes('already') || result.error?.includes('registered')) {
+        // 既に登録済みの場合も成功画面に遷移
+        onNavigate('register-success');
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
     }
   };
 

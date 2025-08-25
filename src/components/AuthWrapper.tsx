@@ -25,16 +25,20 @@ function AuthWrapper() {
     const urlParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     
-    const code = urlParams.get('code');
+    const accessToken = hashParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token');
     const error = urlParams.get('error') || hashParams.get('error');
+    const errorDescription = urlParams.get('error_description') || hashParams.get('error_description');
     
     if (error) {
-      console.error('Auth error:', error);
+      console.error('Auth error:', error, errorDescription);
       setCurrentView('login');
+      // URLパラメータをクリア
+      window.history.replaceState({}, document.title, window.location.pathname);
       return;
     }
 
-    if (code) {
+    if (accessToken && refreshToken) {
       // URLパラメータをクリア
       window.history.replaceState({}, document.title, window.location.pathname);
     }
