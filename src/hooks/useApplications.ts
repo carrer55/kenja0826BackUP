@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase, getApplications, createApplication as createApp } from '../lib/supabase'
 import { useAuth } from './useAuth'
 
 export interface Application {
@@ -65,17 +65,7 @@ export function useApplications() {
         return
       }
 
-      const { data, error: fetchError } = await supabase
-        .from('applications')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-
-      if (fetchError) {
-        console.error('Applications fetch error:', fetchError)
-        throw fetchError
-      }
-
+      const data = await getApplications(user.id)
       setApplications(data || [])
     } catch (err) {
       console.error('Applications fetch error:', err)
@@ -96,27 +86,14 @@ export function useApplications() {
         throw new Error('User not authenticated')
       }
 
-      const { data: newApp, error: createError } = await supabase
-        .from('applications')
-        .insert({
-          user_id: user.id,
-          organization_id: null, // 後で組織機能を実装
-          type,
-          title,
-          description: data.description || null,
-          data,
-          total_amount: calculateTotalAmount(type, data),
-          status: 'draft'
-        })
-        .select()
-        .single()
-
-      if (createError) {
-        throw createError
+      const result = await createApp(type, title, data, user.id)
+      
+      if (!result.success) {
+        throw new Error(result.error)
       }
 
       await fetchApplications()
-      return { success: true, application: newApp }
+      return result
     } catch (err) {
       console.error('Application creation error:', err)
       return { 
@@ -197,17 +174,4 @@ export function useApplications() {
     handleApproval,
     refreshApplications: fetchApplications
   }
-}
-
-function calculateTotalAmount(type: string, data: any): number {
-  if (type === 'business_trip' && data.tripDetails) {
-    const { estimatedDailyAllowance = 0, estimatedTransportation = 0, estimatedAccommodation = 0 } = data.tripDetails
-    return estimatedDailyAllowance + estimatedTransportation + estimatedAccommodation
-  }
-  
-  if (type === 'expense' && data.expenseItems) {
-    return data.expenseItems.reduce((sum: number, item: any) => sum + (item.amount || 0), 0)
-  }
-  
-  return 0
 }

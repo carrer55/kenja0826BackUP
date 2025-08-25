@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase, getNotifications, markNotificationAsRead } from '../lib/supabase'
 import { useAuth } from './useAuth'
 
 export interface Notification {
@@ -68,17 +68,7 @@ export function useNotifications() {
         return
       }
 
-      const { data, error: fetchError } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false })
-        .limit(50)
-
-      if (fetchError) {
-        console.error('Notifications fetch error:', fetchError)
-        throw fetchError
-      }
+      const data = await getNotifications(user.id)
 
       setNotifications(data || [])
       setUnreadCount(data?.filter(n => !n.read).length || 0)
@@ -139,13 +129,10 @@ export function useNotifications() {
         return { success: true }
       }
 
-      const { error: updateError } = await supabase
-        .from('notifications')
-        .update({ read: true, read_at: new Date().toISOString() })
-        .eq('id', notificationId)
-
-      if (updateError) {
-        throw updateError
+      const result = await markNotificationAsRead(notificationId)
+      
+      if (!result.success) {
+        throw new Error(result.error)
       }
 
       setNotifications(prev => 
