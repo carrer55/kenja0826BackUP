@@ -89,4 +89,4 @@ function TopBar({ onMenuClick, onNavigate, onShowNotifications }: TopBarProps) {
   );
 }
 
-export default Sidebar;
+export default TopBar;
