@@ -1,21 +1,12 @@
-import { useState, useEffect } from 'react';
-import { User } from '@supabase/supabase-js';
-import { 
-  supabase, 
-  UserProfile, 
-  getCurrentUser, 
-  getCurrentUserProfile, 
-  createUserProfile,
-  updateUserProfile,
-  createOrganization,
-  getUserOrganizations
-} from '../lib/supabase';
+import { useState, useEffect } from 'react'
+import { User } from '@supabase/supabase-js'
+import { supabase, UserProfile, getCurrentUser, getCurrentUserProfile } from '../lib/supabase'
 
 interface AuthState {
-  user: User | null;
-  profile: UserProfile | null;
-  loading: boolean;
-  error: string | null;
+  user: User | null
+  profile: UserProfile | null
+  loading: boolean
+  error: string | null
 }
 
 export function useAuth() {
@@ -24,21 +15,21 @@ export function useAuth() {
     profile: null,
     loading: true,
     error: null
-  });
+  })
 
   useEffect(() => {
-    let mounted = true;
+    let mounted = true
 
     const getInitialSession = async () => {
       try {
         // デモモードのチェック
-        const demoMode = localStorage.getItem('demoMode');
-        const demoSession = localStorage.getItem('demoSession');
+        const demoMode = localStorage.getItem('demoMode')
+        const demoSession = localStorage.getItem('demoSession')
         
         if (demoMode === 'true' && demoSession) {
           try {
-            const session = JSON.parse(demoSession);
-            const demoProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+            const session = JSON.parse(demoSession)
+            const demoProfile = JSON.parse(localStorage.getItem('userProfile') || '{}')
             
             if (mounted) {
               setAuthState({
@@ -46,36 +37,36 @@ export function useAuth() {
                 profile: demoProfile,
                 loading: false,
                 error: null
-              });
+              })
             }
-            return;
+            return
           } catch (error) {
-            console.error('Demo session parse error:', error);
-            localStorage.removeItem('demoMode');
-            localStorage.removeItem('demoSession');
-            localStorage.removeItem('userProfile');
+            console.error('Demo session parse error:', error)
+            localStorage.removeItem('demoMode')
+            localStorage.removeItem('demoSession')
+            localStorage.removeItem('userProfile')
           }
         }
 
         // 通常の認証チェック
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const { data: { session }, error } = await supabase.auth.getSession()
         
         if (error) {
-          console.error('Session error:', error);
+          console.error('Session error:', error)
           if (mounted) {
             setAuthState({
               user: null,
               profile: null,
               loading: false,
               error: null
-            });
+            })
           }
-          return;
+          return
         }
 
         if (session?.user) {
           try {
-            const profile = await getCurrentUserProfile();
+            const profile = await getCurrentUserProfile()
             
             if (mounted) {
               setAuthState({
@@ -83,17 +74,17 @@ export function useAuth() {
                 profile,
                 loading: false,
                 error: null
-              });
+              })
             }
           } catch (profileError) {
-            console.error('Profile fetch error:', profileError);
+            console.error('Profile fetch error:', profileError)
             if (mounted) {
               setAuthState({
                 user: session.user,
                 profile: null,
                 loading: false,
                 error: null
-              });
+              })
             }
           }
         } else {
@@ -103,48 +94,48 @@ export function useAuth() {
               profile: null,
               loading: false,
               error: null
-            });
+            })
           }
         }
       } catch (error) {
-        console.error('Auth initialization error:', error);
+        console.error('Auth initialization error:', error)
         if (mounted) {
           setAuthState({
             user: null,
             profile: null,
             loading: false,
             error: null
-          });
+          })
         }
       }
-    };
+    }
 
-    getInitialSession();
+    getInitialSession()
 
     // 認証状態の変更を監視
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state change:', event, session?.user?.id);
+        console.log('Auth state change:', event, session?.user?.id)
         
-        if (!mounted) return;
+        if (!mounted) return
 
         if (event === 'SIGNED_IN' && session?.user) {
           try {
-            const profile = await getCurrentUserProfile();
+            const profile = await getCurrentUserProfile()
             setAuthState({
               user: session.user,
               profile,
               loading: false,
               error: null
-            });
+            })
           } catch (error) {
-            console.error('Profile fetch on sign in error:', error);
+            console.error('Profile fetch on sign in error:', error)
             setAuthState({
               user: session.user,
               profile: null,
               loading: false,
               error: null
-            });
+            })
           }
         } else if (event === 'SIGNED_OUT') {
           setAuthState({
@@ -152,86 +143,86 @@ export function useAuth() {
             profile: null,
             loading: false,
             error: null
-          });
+          })
         } else if (event === 'TOKEN_REFRESHED' && session?.user) {
           try {
-            const profile = await getCurrentUserProfile();
+            const profile = await getCurrentUserProfile()
             setAuthState(prev => ({
               ...prev,
               user: session.user,
               profile,
               error: null
-            }));
+            }))
           } catch (error) {
-            console.error('Profile fetch on token refresh error:', error);
+            console.error('Profile fetch on token refresh error:', error)
             setAuthState(prev => ({
               ...prev,
               user: session.user,
               error: null
-            }));
+            }))
           }
         }
       }
-    );
+    )
 
     return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, []);
+      mounted = false
+      subscription.unsubscribe()
+    }
+  }, [])
 
   const signIn = async (email: string, password: string) => {
     try {
-      setAuthState(prev => ({ ...prev, loading: true, error: null }));
+      setAuthState(prev => ({ ...prev, loading: true, error: null }))
 
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
-      });
+      })
 
       if (error) {
-        setAuthState(prev => ({ ...prev, loading: false, error: error.message }));
-        return { success: false, error: error.message };
+        setAuthState(prev => ({ ...prev, loading: false, error: error.message }))
+        return { success: false, error: error.message }
       }
 
       if (data.user) {
         try {
-          const profile = await getCurrentUserProfile();
+          const profile = await getCurrentUserProfile()
           setAuthState({
             user: data.user,
             profile,
             loading: false,
             error: null
-          });
-          return { success: true, user: data.user, profile };
+          })
+          return { success: true, user: data.user, profile }
         } catch (profileError) {
-          console.error('Profile fetch error after sign in:', profileError);
+          console.error('Profile fetch error after sign in:', profileError)
           setAuthState({
             user: data.user,
             profile: null,
             loading: false,
             error: null
-          });
-          return { success: true, user: data.user, profile: null };
+          })
+          return { success: true, user: data.user, profile: null }
         }
       }
 
-      return { success: false, error: 'Unknown error occurred' };
+      return { success: false, error: 'Unknown error occurred' }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Sign in failed';
-      setAuthState(prev => ({ ...prev, loading: false, error: errorMessage }));
-      return { success: false, error: errorMessage };
+      const errorMessage = error instanceof Error ? error.message : 'Sign in failed'
+      setAuthState(prev => ({ ...prev, loading: false, error: errorMessage }))
+      return { success: false, error: errorMessage }
     }
-  };
+  }
 
   const signUp = async (email: string, password: string, profileData?: {
-    full_name: string;
-    company_name: string;
-    position: string;
-    phone: string;
+    full_name: string
+    company_name: string
+    position: string
+    phone: string
   }) => {
     try {
-      setAuthState(prev => ({ ...prev, loading: true, error: null }));
+      setAuthState(prev => ({ ...prev, loading: true, error: null }))
 
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -245,89 +236,98 @@ export function useAuth() {
             phone: profileData.phone
           } : undefined
         }
-      });
+      })
 
       if (error) {
-        setAuthState(prev => ({ ...prev, loading: false, error: error.message }));
-        return { success: false, error: error.message };
+        setAuthState(prev => ({ ...prev, loading: false, error: error.message }))
+        return { success: false, error: error.message }
       }
 
       // ユーザー登録成功時にプロフィールを作成
       if (data.user && profileData) {
         try {
-          await createUserProfile(data.user.id, {
-            full_name: profileData.full_name,
-            company_name: profileData.company_name,
-            position: profileData.position,
-            phone: profileData.phone,
-            department: '',
-            role: 'user',
-            onboarding_completed: false
-          });
+          const { data: newProfile, error: profileError } = await supabase
+            .from('user_profiles')
+            .insert({
+              id: data.user.id,
+              email: data.user.email || '',
+              full_name: profileData.full_name,
+              company_name: profileData.company_name,
+              position: profileData.position,
+              phone: profileData.phone,
+              department: '',
+              role: 'user',
+              onboarding_completed: false
+            })
+            .select()
+            .single()
+
+          if (profileError) {
+            console.error('Profile creation error:', profileError)
+          }
         } catch (profileError) {
-          console.error('Profile creation error:', profileError);
-          // プロフィール作成エラーでも登録は成功とする
+          console.error('Profile creation error:', profileError)
         }
       }
 
-      setAuthState(prev => ({ ...prev, loading: false }));
-      return { success: true, user: data.user };
+      setAuthState(prev => ({ ...prev, loading: false }))
+      return { success: true, user: data.user }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Sign up failed';
-      setAuthState(prev => ({ ...prev, loading: false, error: errorMessage }));
-      return { success: false, error: errorMessage };
+      const errorMessage = error instanceof Error ? error.message : 'Sign up failed'
+      setAuthState(prev => ({ ...prev, loading: false, error: errorMessage }))
+      return { success: false, error: errorMessage }
     }
-  };
+  }
 
   const signOut = async () => {
     try {
-      setAuthState(prev => ({ ...prev, loading: true, error: null }));
+      setAuthState(prev => ({ ...prev, loading: true, error: null }))
 
       // デモモードの場合
       if (localStorage.getItem('demoMode') === 'true') {
-        localStorage.removeItem('demoMode');
-        localStorage.removeItem('demoSession');
-        localStorage.removeItem('userProfile');
+        localStorage.removeItem('demoMode')
+        localStorage.removeItem('demoSession')
+        localStorage.removeItem('userProfile')
         setAuthState({
           user: null,
           profile: null,
           loading: false,
           error: null
-        });
-        return { success: true };
+        })
+        return { success: true }
       }
 
-      const { error } = await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut()
       
       if (error) {
-        setAuthState(prev => ({ ...prev, loading: false, error: error.message }));
-        return { success: false, error: error.message };
+        setAuthState(prev => ({ ...prev, loading: false, error: error.message }))
+        return { success: false, error: error.message }
       }
 
       // ローカルストレージのクリア
-      localStorage.removeItem('userProfile');
+      localStorage.removeItem('userProfile')
       
       setAuthState({
         user: null,
         profile: null,
         loading: false,
         error: null
-      });
+      })
 
-      return { success: true };
+      return { success: true }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Sign out failed';
-      setAuthState(prev => ({ ...prev, loading: false, error: errorMessage }));
-      return { success: false, error: errorMessage };
+      const errorMessage = error instanceof Error ? error.message : 'Sign out failed'
+      setAuthState(prev => ({ ...prev, loading: false, error: errorMessage }))
+      return { success: false, error: errorMessage }
     }
-  };
+  }
 
   const updateProfile = async (updates: Partial<UserProfile>) => {
     try {
-      setAuthState(prev => ({ ...prev, loading: true, error: null }));
+      setAuthState(prev => ({ ...prev, loading: true, error: null }))
 
       if (!authState.user) {
-        throw new Error('User not authenticated');
+        throw new Error('User not authenticated')
       }
 
       // プロフィールの作成または更新
@@ -340,37 +340,47 @@ export function useAuth() {
           updated_at: new Date().toISOString()
         })
         .select()
-        .single();
+        .single()
 
       if (error) {
-        setAuthState(prev => ({ ...prev, loading: false, error: error.message }));
-        return { success: false, error: error.message };
+        setAuthState(prev => ({ ...prev, loading: false, error: error.message }))
+        return { success: false, error: error.message }
       }
 
       // 組織が設定されていない場合は作成
       if (!data.default_organization_id && data.company_name) {
         try {
-          const organization = await createOrganization(data.company_name, `${data.company_name}の組織`);
-          
-          // プロフィールに組織IDを設定
-          const { data: updatedProfile, error: updateError } = await supabase
-            .from('user_profiles')
-            .update({ default_organization_id: organization.id })
-            .eq('id', authState.user.id)
+          const { data: organization, error: orgError } = await supabase
+            .from('organizations')
+            .insert({
+              name: data.company_name,
+              description: `${data.company_name}の組織`,
+              owner_id: authState.user.id
+            })
             .select()
-            .single();
+            .single()
 
-          if (!updateError) {
-            setAuthState(prev => ({
-              ...prev,
-              profile: updatedProfile,
-              loading: false,
-              error: null
-            }));
-            return { success: true, profile: updatedProfile };
+          if (!orgError && organization) {
+            // プロフィールに組織IDを設定
+            const { data: updatedProfile, error: updateError } = await supabase
+              .from('user_profiles')
+              .update({ default_organization_id: organization.id })
+              .eq('id', authState.user.id)
+              .select()
+              .single()
+
+            if (!updateError) {
+              setAuthState(prev => ({
+                ...prev,
+                profile: updatedProfile,
+                loading: false,
+                error: null
+              }))
+              return { success: true, profile: updatedProfile }
+            }
           }
         } catch (orgError) {
-          console.error('Organization creation error:', orgError);
+          console.error('Organization creation error:', orgError)
         }
       }
 
@@ -379,32 +389,32 @@ export function useAuth() {
         profile: data,
         loading: false,
         error: null
-      }));
+      }))
 
-      return { success: true, profile: data };
+      return { success: true, profile: data }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Profile update failed';
-      setAuthState(prev => ({ ...prev, loading: false, error: errorMessage }));
-      return { success: false, error: errorMessage };
+      const errorMessage = error instanceof Error ? error.message : 'Profile update failed'
+      setAuthState(prev => ({ ...prev, loading: false, error: errorMessage }))
+      return { success: false, error: errorMessage }
     }
-  };
+  }
 
   const resetPassword = async (email: string) => {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}`,
-      });
+      })
 
       if (error) {
-        return { success: false, error: error.message };
+        return { success: false, error: error.message }
       }
 
-      return { success: true };
+      return { success: true }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Password reset failed';
-      return { success: false, error: errorMessage };
+      const errorMessage = error instanceof Error ? error.message : 'Password reset failed'
+      return { success: false, error: errorMessage }
     }
-  };
+  }
 
   return {
     ...authState,
@@ -416,5 +426,5 @@ export function useAuth() {
     isAuthenticated: !!authState.user,
     isEmailConfirmed: !!authState.user?.email_confirmed_at || localStorage.getItem('demoMode') === 'true',
     isOnboardingCompleted: !!authState.profile?.onboarding_completed || localStorage.getItem('demoMode') === 'true'
-  };
+  }
 }

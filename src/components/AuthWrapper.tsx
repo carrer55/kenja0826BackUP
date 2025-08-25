@@ -1,60 +1,142 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../hooks/useAuth';
-import Login from './auth/Login';
-import Register from './auth/Register';
-import RegisterSuccess from './auth/RegisterSuccess';
-import EmailConfirmed from './auth/EmailConfirmed';
-import Onboarding from './auth/Onboarding';
-import PasswordReset from './auth/PasswordReset';
-import Dashboard from './Dashboard';
+import React, { useEffect, useState, useCallback } from 'react'
+import { supabase } from '../lib/supabase'
+import type { User } from '@supabase/supabase-js'
+import Login from './auth/Login'
+import Register from './auth/Register'
+import RegisterSuccess from './auth/RegisterSuccess'
+import EmailConfirmed from './auth/EmailConfirmed'
+import Onboarding from './auth/Onboarding'
+import PasswordReset from './auth/PasswordReset'
+import Dashboard from './Dashboard'
 
-function AuthWrapper() {
-  const [currentView, setCurrentView] = useState<string>('login');
-  const { 
-    user, 
-    profile, 
-    loading, 
-    error,
-    isAuthenticated, 
-    isEmailConfirmed, 
-    isOnboardingCompleted 
-  } = useAuth();
+interface AuthWrapperProps {
+  children?: React.ReactNode
+}
 
-  useEffect(() => {
-    // URLパラメータのクリア（必要に応じて）
-    if (window.location.hash || window.location.search) {
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }, []);
+export function AuthWrapper({ children }: AuthWrapperProps) {
+  const [user, setUser] = useState<User | null>(null)
+  const [profile, setProfile] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [currentView, setCurrentView] = useState<string>('login')
 
-  useEffect(() => {
-    if (loading) return;
-
-    if (isAuthenticated && user) {
-      if (!isEmailConfirmed) {
-        setCurrentView('email-confirmed');
-      } else if (!isOnboardingCompleted) {
-        setCurrentView('onboarding');
-      } else {
-        // 認証完了 - Dashboardが表示される
-        return;
+  const checkAuth = useCallback(async () => {
+    try {
+      setError(null)
+      
+      // デモモードのチェック
+      const demoMode = localStorage.getItem('demoMode')
+      const demoSession = localStorage.getItem('demoSession')
+      
+      if (demoMode === 'true' && demoSession) {
+        try {
+          const session = JSON.parse(demoSession)
+          const demoProfile = JSON.parse(localStorage.getItem('userProfile') || '{}')
+          
+          setUser(session.user)
+          setProfile(demoProfile)
+          setLoading(false)
+          return
+        } catch (error) {
+          console.error('Demo session parse error:', error)
+          localStorage.removeItem('demoMode')
+          localStorage.removeItem('demoSession')
+          localStorage.removeItem('userProfile')
+        }
       }
-    } else {
-      setCurrentView('login');
+
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError) {
+        console.error('Auth check error:', authError)
+        setError(authError.message)
+        setUser(null)
+        setProfile(null)
+      } else {
+        setUser(user)
+        
+        if (user) {
+          // プロフィール取得
+          try {
+            const { data: profileData, error: profileError } = await supabase
+              .from('user_profiles')
+              .select('*')
+              .eq('id', user.id)
+              .single()
+
+            if (profileError) {
+              console.error('Profile fetch error:', profileError)
+              setProfile(null)
+            } else {
+              setProfile(profileData)
+            }
+          } catch (profileError) {
+            console.error('Profile fetch error:', profileError)
+            setProfile(null)
+          }
+        }
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
+      console.error('Auth check error:', err)
+      setError(errorMessage)
+      setUser(null)
+      setProfile(null)
+    } finally {
+      setLoading(false)
     }
-  }, [isAuthenticated, user, profile, loading, isEmailConfirmed, isOnboardingCompleted]);
+  }, [])
 
-  const handleLoginSuccess = () => {
-    // useAuthフックが自動的に状態を更新
-  };
+  useEffect(() => {
+    checkAuth()
 
-  const handleOnboardingComplete = () => {
-    // useAuthフックが自動的に状態を更新
-  };
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state change:', event, session?.user?.email)
+        
+        if (event === 'SIGNED_IN' && session?.user) {
+          setUser(session.user)
+          
+          // プロフィール取得
+          try {
+            const { data: profileData, error: profileError } = await supabase
+              .from('user_profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single()
+
+            if (!profileError) {
+              setProfile(profileData)
+            }
+          } catch (error) {
+            console.error('Profile fetch on sign in error:', error)
+          }
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null)
+          setProfile(null)
+        }
+        
+        setLoading(false)
+        setError(null)
+      }
+    )
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [checkAuth])
 
   const navigateToView = (view: string) => {
-    setCurrentView(view);
-  };
+    setCurrentView(view)
+  }
+
+  const handleLoginSuccess = () => {
+    // 認証状態は onAuthStateChange で自動更新される
+  }
+
+  const handleOnboardingComplete = () => {
+    checkAuth() // プロフィール情報を再取得
+  }
 
   if (loading) {
     return (
@@ -66,27 +148,54 @@ function AuthWrapper() {
           <p className="text-slate-600">読み込み中...</p>
         </div>
       </div>
-    );
+    )
   }
 
-  if (isAuthenticated) {
-    return <Dashboard />;
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded max-w-md">
+          <strong className="font-bold">エラー: </strong>
+          <span className="block sm:inline">{error}</span>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-2 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+          >
+            再読み込み
+          </button>
+        </div>
+      </div>
+    )
   }
 
+  // 認証済みユーザーの場合
+  if (user) {
+    // プロフィールが存在しない、またはオンボーディングが未完了の場合
+    if (!profile || !profile.onboarding_completed) {
+      if (currentView === 'onboarding' || !profile) {
+        return <Onboarding onNavigate={navigateToView} onComplete={handleOnboardingComplete} />
+      }
+    }
+    
+    // 認証完了 - ダッシュボードを表示
+    return <Dashboard />
+  }
+
+  // 未認証ユーザーの場合
   switch (currentView) {
     case 'register':
-      return <Register onNavigate={navigateToView} />;
+      return <Register onNavigate={navigateToView} />
     case 'register-success':
-      return <RegisterSuccess onNavigate={navigateToView} />;
+      return <RegisterSuccess onNavigate={navigateToView} />
     case 'email-confirmed':
-      return <EmailConfirmed onNavigate={navigateToView} />;
+      return <EmailConfirmed onNavigate={navigateToView} />
     case 'onboarding':
-      return <Onboarding onNavigate={navigateToView} onComplete={handleOnboardingComplete} />;
+      return <Onboarding onNavigate={navigateToView} onComplete={handleOnboardingComplete} />
     case 'password-reset':
-      return <PasswordReset onNavigate={navigateToView} />;
+      return <PasswordReset onNavigate={navigateToView} />
     default:
-      return <Login onNavigate={navigateToView} onLoginSuccess={handleLoginSuccess} />;
+      return <Login onNavigate={navigateToView} onLoginSuccess={handleLoginSuccess} />
   }
 }
 
-export default AuthWrapper;
+export default AuthWrapper

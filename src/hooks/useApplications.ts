@@ -56,6 +56,29 @@ export function useApplications() {
   useEffect(() => {
     if (user && profile) {
       fetchApplications()
+    } else {
+      // デモモードの場合はサンプルデータを表示
+      if (localStorage.getItem('demoMode') === 'true') {
+        setApplications([
+          {
+            id: 'demo-app-1',
+            user_id: 'demo-user-id',
+            organization_id: null,
+            type: 'business_trip',
+            title: '東京出張申請',
+            description: 'クライアント訪問',
+            data: {},
+            total_amount: 52500,
+            status: 'approved',
+            submitted_at: new Date().toISOString(),
+            approved_at: new Date().toISOString(),
+            approved_by: null,
+            rejection_reason: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }
+        ])
+      }
     }
   }, [user, profile])
 
@@ -73,12 +96,12 @@ export function useApplications() {
         .from('applications')
         .select(`
           *,
-          user_profiles!applications_user_id_fkey (
+          user_profiles (
             full_name,
             department,
             position
           ),
-          organizations!applications_organization_id_fkey (
+          organizations (
             name
           ),
           expense_items (*),
@@ -113,7 +136,7 @@ export function useApplications() {
       }
 
       // 組織IDを取得または作成
-      let organizationId = profile?.default_organization_id;
+      let organizationId = profile?.default_organization_id
       
       if (!organizationId && profile?.company_name) {
         try {
@@ -125,19 +148,19 @@ export function useApplications() {
               description: `${profile.company_name}の組織`
             })
             .select()
-            .single();
+            .single()
 
           if (!orgError && newOrg) {
-            organizationId = newOrg.id;
+            organizationId = newOrg.id
             
             // プロフィールに組織IDを設定
             await supabase
               .from('user_profiles')
               .update({ default_organization_id: organizationId })
-              .eq('id', user.id);
+              .eq('id', user.id)
           }
         } catch (orgError) {
-          console.error('Organization creation error:', orgError);
+          console.error('Organization creation error:', orgError)
         }
       }
 
@@ -296,13 +319,13 @@ export function useApplications() {
       const updates: any = {
         status: action,
         updated_at: new Date().toISOString()
-      };
+      }
 
       if (action === 'approved') {
-        updates.approved_at = new Date().toISOString();
-        updates.approved_by = user?.id;
+        updates.approved_at = new Date().toISOString()
+        updates.approved_by = user?.id
       } else if (action === 'rejected' || action === 'returned') {
-        updates.rejection_reason = comment;
+        updates.rejection_reason = comment
       }
 
       const { data, error } = await supabase
@@ -310,10 +333,10 @@ export function useApplications() {
         .update(updates)
         .eq('id', applicationId)
         .select()
-        .single();
+        .single()
 
       if (error) {
-        throw error;
+        throw error
       }
 
       await fetchApplications()
@@ -342,13 +365,13 @@ export function useApplications() {
 
 function calculateTotalAmount(type: string, data: any): number {
   if (type === 'business_trip' && data.tripDetails) {
-    const { estimatedDailyAllowance = 0, estimatedTransportation = 0, estimatedAccommodation = 0 } = data.tripDetails;
-    return estimatedDailyAllowance + estimatedTransportation + estimatedAccommodation;
+    const { estimatedDailyAllowance = 0, estimatedTransportation = 0, estimatedAccommodation = 0 } = data.tripDetails
+    return estimatedDailyAllowance + estimatedTransportation + estimatedAccommodation
   }
   
   if (type === 'expense' && data.expenseItems) {
-    return data.expenseItems.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
+    return data.expenseItems.reduce((sum: number, item: any) => sum + (item.amount || 0), 0)
   }
   
-  return 0;
+  return 0
 }
