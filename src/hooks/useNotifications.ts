@@ -33,6 +33,12 @@ export function useNotifications() {
       setLoading(true)
       setError(null)
 
+      if (!user) {
+        setNotifications([])
+        setUnreadCount(0)
+        return
+      }
+
       const { data, error: fetchError } = await supabase
         .from('notifications')
         .select('*')
@@ -41,6 +47,7 @@ export function useNotifications() {
         .limit(50)
 
       if (fetchError) {
+        console.error('Notifications fetch error:', fetchError)
         throw fetchError
       }
 
@@ -49,6 +56,8 @@ export function useNotifications() {
     } catch (err) {
       console.error('Notifications fetch error:', err)
       setError(err instanceof Error ? err.message : 'Failed to fetch notifications')
+      setNotifications([])
+      setUnreadCount(0)
     } finally {
       setLoading(false)
     }

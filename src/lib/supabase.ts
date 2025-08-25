@@ -752,26 +752,40 @@ export interface AuthUser {
 }
 // 認証関連のヘルパー関数
 export const getCurrentUser = async () => {
-  const { data: { user } } = await supabase.auth.getUser();
-  return user;
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error) {
+      console.error('Get user error:', error);
+      return null;
+    }
+    return user;
+  } catch (error) {
+    console.error('Get user failed:', error);
+    return null;
+  }
 };
 
 export const getCurrentUserProfile = async () => {
-  const user = await getCurrentUser();
-  if (!user) return null;
+  try {
+    const user = await getCurrentUser();
+    if (!user) return null;
 
-  const { data: profile, error } = await supabase
-    .from('user_profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
+    const { data: profile, error } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
 
-  if (error) {
-    console.error('Profile fetch error:', error);
+    if (error) {
+      console.error('Profile fetch error:', error);
+      return null;
+    }
+
+    return profile;
+  } catch (error) {
+    console.error('Get user profile failed:', error);
     return null;
   }
-
-  return profile;
 };
 
 export const updateUserProfile = async (updates: Partial<UserProfile>) => {

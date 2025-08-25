@@ -64,6 +64,11 @@ export function useApplications() {
       setLoading(true)
       setError(null)
 
+      if (!user) {
+        setApplications([])
+        return
+      }
+
       const { data, error: fetchError } = await supabase
         .from('applications')
         .select(`
@@ -77,6 +82,7 @@ export function useApplications() {
         .order('created_at', { ascending: false })
 
       if (fetchError) {
+        console.error('Applications fetch error:', fetchError)
         throw fetchError
       }
 
@@ -84,6 +90,7 @@ export function useApplications() {
     } catch (err) {
       console.error('Applications fetch error:', err)
       setError(err instanceof Error ? err.message : 'Failed to fetch applications')
+      setApplications([]) // エラー時は空配列を設定
     } finally {
       setLoading(false)
     }

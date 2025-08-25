@@ -107,13 +107,23 @@ export function useAuth() {
         if (!mounted) return;
 
         if (event === 'SIGNED_IN' && session?.user) {
-          const profile = await getCurrentUserProfile();
-          setAuthState({
-            user: session.user,
-            profile,
-            loading: false,
-            error: null
-          });
+          try {
+            const profile = await getCurrentUserProfile();
+            setAuthState({
+              user: session.user,
+              profile,
+              loading: false,
+              error: null
+            });
+          } catch (error) {
+            console.error('Profile fetch on sign in error:', error);
+            setAuthState({
+              user: session.user,
+              profile: null,
+              loading: false,
+              error: null
+            });
+          }
         } else if (event === 'SIGNED_OUT') {
           setAuthState({
             user: null,
@@ -122,13 +132,22 @@ export function useAuth() {
             error: null
           });
         } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-          const profile = await getCurrentUserProfile();
-          setAuthState(prev => ({
-            ...prev,
-            user: session.user,
-            profile,
-            error: null
-          }));
+          try {
+            const profile = await getCurrentUserProfile();
+            setAuthState(prev => ({
+              ...prev,
+              user: session.user,
+              profile,
+              error: null
+            }));
+          } catch (error) {
+            console.error('Profile fetch on token refresh error:', error);
+            setAuthState(prev => ({
+              ...prev,
+              user: session.user,
+              error: null
+            }));
+          }
         }
       }
     );

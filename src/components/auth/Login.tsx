@@ -107,10 +107,13 @@ function Login({ onNavigate, onLoginSuccess }: LoginProps) {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/40 rounded-lg text-slate-700 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-navy-400 backdrop-blur-xl"
-                    placeholder="your@email.com"
+                    placeholder="your@email.com または demo"
                     required
                   />
                 </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  デモアカウント: email「demo」、password「pass9981」
+                </p>
               </div>
 
               <div>
