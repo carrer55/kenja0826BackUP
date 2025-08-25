@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bell, HelpCircle, MessageCircle, User, Menu } from 'lucide-react';
+import { Bell, HelpCircle, MessageCircle, Menu } from 'lucide-react';
 import { useNotifications } from '../hooks/useNotifications';
 
 interface TopBarProps {
