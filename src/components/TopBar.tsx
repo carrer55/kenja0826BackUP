@@ -1,7 +1,6 @@
 import React from 'react';
 import { Bell, HelpCircle, MessageCircle, User, Menu, LogOut } from 'lucide-react';
 import { useNotifications } from '../hooks/useNotifications';
-import { useAuth } from '../hooks/useAuth';
 
 interface TopBarProps {
   onMenuClick: () => void;
@@ -11,7 +10,6 @@ interface TopBarProps {
 
 function TopBar({ onMenuClick, onNavigate, onShowNotifications }: TopBarProps) {
   const { unreadCount } = useNotifications();
-  const { signOut } = useAuth();
   
   // ユーザーのプラン情報を取得（実際の実装では、ユーザー情報から取得）
   const getCurrentPlan = () => {
@@ -20,38 +18,6 @@ function TopBar({ onMenuClick, onNavigate, onShowNotifications }: TopBarProps) {
   };
 
   const currentPlan = getCurrentPlan();
-
-  const handleLogout = async () => {
-    if (confirm('ログアウトしてもよろしいですか？')) {
-      try {
-        // デモモードの場合はローカルストレージをクリア
-        if (localStorage.getItem('demoMode') === 'true') {
-          localStorage.removeItem('demoMode');
-          localStorage.removeItem('demoSession');
-          localStorage.removeItem('userProfile');
-          localStorage.removeItem('travelRegulations');
-          localStorage.removeItem('notificationSettings');
-          localStorage.removeItem('approvalReminderRules');
-          localStorage.removeItem('approvalReminderGlobalSettings');
-          window.location.reload();
-        } else {
-          // 通常のログアウト処理
-          const result = await signOut();
-          if (result.success) {
-            window.location.reload();
-          } else {
-            console.error('Logout error:', result.error);
-            // エラーが発生してもログアウトを強制実行
-            window.location.reload();
-          }
-        }
-      } catch (error) {
-        console.error('Logout error:', error);
-        // エラーが発生してもログアウトを強制実行
-        window.location.reload();
-      }
-    }
-  };
 
   return (
     <div className="h-16 backdrop-blur-xl bg-white/10 border-b border-white/20 flex items-center justify-between px-4 lg:px-6 shadow-xl relative overflow-hidden">
@@ -116,19 +82,6 @@ function TopBar({ onMenuClick, onNavigate, onShowNotifications }: TopBarProps) {
           </div>
           <div className="w-20 h-10 bg-gradient-to-br from-navy-600 to-navy-800 rounded-full flex items-center justify-center ml-2 shadow-lg px-4">
             <span className="text-white text-sm font-bold">{currentPlan}</span>
-          </div>
-          <div className="relative group">
-            <button 
-              onClick={handleLogout}
-              className="p-2 text-slate-600 hover:text-slate-800 hover:bg-white/30 rounded-lg transition-all duration-200 backdrop-blur-sm hover:shadow-lg"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
-            {/* ツールチップ */}
-            <div className="absolute right-full mr-2 top-1/2 transform -translate-y-1/2 px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
-              ログアウト
-              <div className="absolute left-full top-1/2 transform -translate-y-1/2 w-0 h-0 border-l-4 border-l-slate-800 border-t-2 border-t-transparent border-b-2 border-b-transparent"></div>
-            </div>
           </div>
         </div>
       </div>
