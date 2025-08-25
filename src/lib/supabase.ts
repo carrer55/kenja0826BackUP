@@ -17,12 +17,18 @@ export const supabase = (() => {
       auth: {
         persistSession: true,
         storageKey: 'sb-auth-token',
-        storage: window.localStorage,
+        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
         autoRefreshToken: true,
         detectSessionInUrl: true
       },
       db: {
         schema: 'public'
+      },
+      // リアルタイム機能を無効化してパフォーマンス改善
+      realtime: {
+        params: {
+          eventsPerSecond: 10
+        }
       }
     })
   }
@@ -84,10 +90,10 @@ export const createUserProfileSafely = async (user: any) => {
       .from('user_profiles')
       .select('id')
       .eq('id', user.id)
-      .single()
+      .maybeSingle()
 
     // プロファイルが存在しない場合のみ作成
-    if (fetchError && fetchError.code === 'PGRST116') {
+    if (!existingProfile && fetchError?.code === 'PGRST116') {
       const { error: insertError } = await supabase
         .from('user_profiles')
         .insert({
