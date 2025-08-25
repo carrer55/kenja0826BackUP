@@ -11,9 +11,15 @@ export function LoginForm() {
     e.preventDefault()
     try {
       if (isSignUp) {
-        await signUp(email, password)
+        const result = await signUp(email, password)
+        if (result.success) {
+          alert('アカウントが作成されました')
+        }
       } else {
-        await signIn(email, password)
+        const result = await signIn(email, password)
+        if (result.success) {
+          // ログイン成功時の処理はuseAuthで自動的に行われる
+        }
       }
     } catch (err) {
       console.error('Auth error:', err)

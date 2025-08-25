@@ -1,14 +1,33 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import Login from './auth/Login'
+import Register from './auth/Register'
+import PasswordReset from './auth/PasswordReset'
+import RegisterSuccess from './auth/RegisterSuccess'
+import EmailConfirmed from './auth/EmailConfirmed'
+import Onboarding from './auth/Onboarding'
 import Dashboard from './Dashboard'
 
-interface AuthWrapperProps {
-  children?: React.ReactNode
-}
+export function AuthWrapper() {
+  const { user, profile, loading, error } = useAuth()
+  const [currentView, setCurrentView] = useState<string>('login')
 
-export function AuthWrapper({ children }: AuthWrapperProps) {
-  const { user, loading, error } = useAuth()
+  const handleNavigate = (view: string) => {
+    setCurrentView(view)
+  }
+
+  const handleLoginSuccess = () => {
+    // ログイン成功後の処理
+    if (user && profile?.onboarding_completed) {
+      setCurrentView('dashboard')
+    } else if (user && !profile?.onboarding_completed) {
+      setCurrentView('onboarding')
+    }
+  }
+
+  const handleOnboardingComplete = () => {
+    setCurrentView('dashboard')
+  }
 
   if (loading) {
     return (
@@ -53,11 +72,33 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
     )
   }
 
-  if (!user) {
-    return <Login onNavigate={() => {}} onLoginSuccess={() => window.location.reload()} />
+  // 認証済みユーザーの場合
+  if (user) {
+    // オンボーディング未完了の場合
+    if (!profile?.onboarding_completed && currentView !== 'onboarding') {
+      return <Onboarding onNavigate={handleNavigate} onComplete={handleOnboardingComplete} />
+    }
+    
+    // ダッシュボードを表示
+    return <Dashboard />
   }
 
-  return <Dashboard />
+  // 未認証ユーザーの認証フロー
+  switch (currentView) {
+    case 'register':
+      return <Register onNavigate={handleNavigate} />
+    case 'register-success':
+      return <RegisterSuccess onNavigate={handleNavigate} />
+    case 'email-confirmed':
+      return <EmailConfirmed onNavigate={handleNavigate} />
+    case 'onboarding':
+      return <Onboarding onNavigate={handleNavigate} onComplete={handleOnboardingComplete} />
+    case 'password-reset':
+      return <PasswordReset onNavigate={handleNavigate} />
+    case 'login':
+    default:
+      return <Login onNavigate={handleNavigate} onLoginSuccess={handleLoginSuccess} />
+  }
 }
 
 export default AuthWrapper
