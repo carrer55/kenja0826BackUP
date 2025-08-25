@@ -30,19 +30,13 @@ interface SidebarProps {
 }
 
 function Sidebar({ isOpen, onClose, onNavigate, currentView = 'dashboard' }: SidebarProps) {
-  const { signOut, profile, loading: authLoading } = useAuth();
+  const { signOut, profile } = useAuth();
 
   const handleLogout = async () => {
     if (confirm('ログアウトしてもよろしいですか？')) {
       try {
-        const result = await signOut();
-        if (result.success) {
-          // ログアウト成功時はページをリロード
-          window.location.reload();
-        } else {
-          console.error('Logout error:', result.error);
-          alert('ログアウトに失敗しました: ' + result.error);
-        }
+        await signOut();
+        window.location.reload();
       } catch (error) {
         console.error('Logout error:', error);
         alert('ログアウト中にエラーが発生しました');
@@ -54,7 +48,6 @@ function Sidebar({ isOpen, onClose, onNavigate, currentView = 'dashboard' }: Sid
     if (onNavigate) {
       onNavigate(view);
     }
-    // Close sidebar on mobile when item is clicked
     if (window.innerWidth < 1024) {
       onClose();
     }
@@ -62,18 +55,13 @@ function Sidebar({ isOpen, onClose, onNavigate, currentView = 'dashboard' }: Sid
 
   return (
     <div className="w-64 h-screen backdrop-blur-xl bg-white/20 border-r border-white/30 flex flex-col shadow-2xl relative overflow-hidden">
-      {/* Glass effect overlay */}
       <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-white/10 to-white/5 backdrop-blur-xl"></div>
       <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 to-indigo-50/20"></div>
       
       <div className="p-4 lg:p-6 flex-shrink-0">
         <div className="flex items-center justify-between relative z-10">
           <div className="flex items-center space-x-3">
-            <img 
-              src="/賢者の精算Logo2_Transparent_NoBuffer copy.png" 
-              alt="賢者の精算ロゴ" 
-              className="w-32 h-12 lg:w-48 lg:h-20 object-contain"
-            />
+            <h1 className="text-xl font-bold text-slate-800">賢者の精算</h1>
           </div>
           <button
             onClick={onClose}
@@ -109,7 +97,6 @@ function Sidebar({ isOpen, onClose, onNavigate, currentView = 'dashboard' }: Sid
         </ul>
       </nav>
 
-      {/* User Card */}
       <div className="p-4 relative z-10 flex-shrink-0">
         <div className="backdrop-blur-xl bg-white/20 rounded-lg p-4 border border-white/30 shadow-xl">
           <div className="flex items-center space-x-3 mb-3">
@@ -127,12 +114,10 @@ function Sidebar({ isOpen, onClose, onNavigate, currentView = 'dashboard' }: Sid
           </div>
           <button 
             onClick={handleLogout}
-            className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-white/30 hover:bg-white/50 rounded-lg border border-white/40 transition-all duration-200 backdrop-blur-sm hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-white/30 hover:bg-white/50 rounded-lg border border-white/40 transition-all duration-200 backdrop-blur-sm hover:shadow-lg"
           >
             <LogOut className="w-4 h-4 text-slate-700" />
-            <span className="text-slate-700 text-sm">
-              ログアウト
-            </span>
+            <span className="text-slate-700 text-sm">ログアウト</span>
           </button>
         </div>
       </div>

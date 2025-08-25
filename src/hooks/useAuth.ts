@@ -24,62 +24,6 @@ export function useAuth() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // 安全なプロファイル作成（重複回避）
-  const createUserProfileSafely = useCallback(async (user: User) => {
-    try {
-      // まず既存プロファイルを確認
-      const { data: existingProfile, error: fetchError } = await supabase
-        .from('user_profiles')
-        .select('id')
-        .eq('id', user.id)
-        .maybeSingle()
-
-      // プロファイルが存在しない場合のみ作成
-      if (!existingProfile && fetchError?.code === 'PGRST116') {
-        const { error: insertError } = await supabase
-          .from('user_profiles')
-          .insert({
-            id: user.id,
-            email: user.email,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-
-        if (insertError && insertError.code !== '23505') {
-          // 23505は重複エラー（無視してOK）
-          console.warn('Profile creation error:', insertError)
-        }
-      }
-    } catch (err) {
-      console.warn('Profile creation failed:', err)
-    }
-  }, [])
-
-  const fetchUserProfile = useCallback(async (userId: string) => {
-    try {
-      const { data: profile, error } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', userId)
-        .single()
-
-      if (error && error.code === 'PGRST116') {
-        // プロファイルが存在しない場合は作成
-        await createUserProfileSafely({ id: userId, email: user?.email } as User)
-        return
-      }
-
-      if (error) {
-        console.error('Profile fetch error:', error)
-        return
-      }
-
-      setProfile(profile)
-    } catch (err) {
-      console.error('Profile fetch failed:', err)
-    }
-  }, [createUserProfileSafely, user?.email])
-
   useEffect(() => {
     let mounted = true
 
@@ -115,12 +59,7 @@ export function useAuth() {
         if (!mounted) return
 
         if (error) throw error
-        
         setUser(user)
-        
-        if (user) {
-          await fetchUserProfile(user.id)
-        }
       } catch (err) {
         if (!mounted) return
         console.error('Initial auth error:', err)
@@ -141,12 +80,6 @@ export function useAuth() {
         setUser(session?.user || null)
         setError(null)
         setLoading(false)
-
-        if (session?.user) {
-          await fetchUserProfile(session.user.id)
-        } else {
-          setProfile(null)
-        }
       }
     )
 
@@ -154,7 +87,7 @@ export function useAuth() {
       mounted = false
       subscription.unsubscribe()
     }
-  }, [fetchUserProfile])
+  }, [])
 
   // メモ化された認証メソッド
   const authMethods = useMemo(() => ({
@@ -165,46 +98,39 @@ export function useAuth() {
       try {
         // デモアカウントの処理
         if (email === 'demo' && password === 'pass9981') {
-          try {
-            // デモユーザーのプロフィール情報をローカルストレージに設定
-            const demoProfile = {
+          const demoProfile = {
+            id: 'demo-user-id',
+            email: 'demo',
+            full_name: 'デモユーザー',
+            company_name: '株式会社デモ',
+            position: '代表取締役',
+            phone: '090-0000-0000',
+            department: '経営企画部',
+            role: 'admin',
+            default_organization_id: null,
+            avatar_url: null,
+            onboarding_completed: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          
+          localStorage.setItem('userProfile', JSON.stringify(demoProfile));
+          localStorage.setItem('demoMode', 'true');
+          
+          const demoSession = {
+            user: {
               id: 'demo-user-id',
               email: 'demo',
-              full_name: 'デモユーザー',
-              company_name: '株式会社デモ',
-              position: '代表取締役',
-              phone: '090-0000-0000',
-              department: '経営企画部',
-              role: 'admin',
-              default_organization_id: null,
-              avatar_url: null,
-              onboarding_completed: true,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            };
-            
-            localStorage.setItem('userProfile', JSON.stringify(demoProfile));
-            localStorage.setItem('demoMode', 'true');
-            
-            // 認証状態をシミュレート
-            const demoSession = {
-              user: {
-                id: 'demo-user-id',
-                email: 'demo',
-                email_confirmed_at: new Date().toISOString()
-              }
-            };
-            
-            localStorage.setItem('demoSession', JSON.stringify(demoSession));
-            
-            setUser(demoSession.user as User);
-            setProfile(demoProfile);
-            
-            return { success: true };
-          } catch (err) {
-            console.error('Demo login error:', err);
-            return { success: false, error: 'デモログインに失敗しました' };
-          }
+              email_confirmed_at: new Date().toISOString()
+            }
+          };
+          
+          localStorage.setItem('demoSession', JSON.stringify(demoSession));
+          
+          setUser(demoSession.user as User);
+          setProfile(demoProfile);
+          
+          return { success: true };
         }
 
         // 通常のログイン処理
@@ -224,48 +150,13 @@ export function useAuth() {
       }
     },
 
-    signUp: async (email: string, password: string, profileData?: any) => {
-      setLoading(true)
-      setError(null)
-      
-      try {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: profileData
-          }
-        })
-        
-        if (error) throw error
-        return { success: true, user: data.user }
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Sign up failed'
-        setError(errorMessage)
-        return { success: false, error: errorMessage }
-      } finally {
-        setLoading(false)
-      }
-    },
-
     signOut: async () => {
-      setLoading(true)
-      setError(null)
-      
       try {
         // デモモードの場合
         if (localStorage.getItem('demoMode') === 'true') {
-          localStorage.removeItem('demoMode')
-          localStorage.removeItem('demoSession')
-          localStorage.removeItem('userProfile')
-          localStorage.removeItem('travelRegulations')
-          localStorage.removeItem('notificationSettings')
-          localStorage.removeItem('approvalReminderRules')
-          localStorage.removeItem('approvalReminderGlobalSettings')
-          
+          localStorage.clear()
           setUser(null)
           setProfile(null)
-          setLoading(false)
           return { success: true }
         }
 
@@ -273,70 +164,17 @@ export function useAuth() {
         const { error } = await supabase.auth.signOut()
         if (error) throw error
         
-        // ローカルストレージのクリア
         localStorage.clear()
-        
         setUser(null)
         setProfile(null)
         return { success: true }
       } catch (err) {
         console.error('Sign out error:', err)
         const errorMessage = err instanceof Error ? err.message : 'Sign out failed'
-        setError(errorMessage)
-        return { success: false, error: errorMessage }
-      } finally {
-        setLoading(false)
-      }
-    },
-
-    updateProfile: async (updates: Partial<UserProfile>) => {
-      try {
-        if (!user) {
-          throw new Error('User not authenticated')
-        }
-
-        const { data, error } = await supabase
-          .from('user_profiles')
-          .update({
-            ...updates,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', user.id)
-          .select()
-          .single()
-
-        if (error) {
-          throw error
-        }
-
-        setProfile(data)
-        return { success: true, profile: data }
-      } catch (err) {
-        console.error('Profile update error:', err)
-        return { 
-          success: false, 
-          error: err instanceof Error ? err.message : 'Failed to update profile' 
-        }
-      }
-    },
-
-    resetPassword: async (email: string) => {
-      try {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/#/password-reset-confirm`,
-        })
-
-        if (error) {
-          return { success: false, error: error.message }
-        }
-
-        return { success: true }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Password reset failed'
         return { success: false, error: errorMessage }
       }
     }
-  }), [user])
+  }), [])
 
   return {
     user,
