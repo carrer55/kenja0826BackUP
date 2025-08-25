@@ -1,401 +1,102 @@
-import { useState, useEffect } from 'react'
-import { User } from '@supabase/supabase-js'
-import { supabase, UserProfile, getCurrentUser, getCurrentUserProfile } from '../lib/supabase'
-
-interface AuthState {
-  user: User | null
-  profile: UserProfile | null
-  loading: boolean
-  error: string | null
-}
+import { useEffect, useState } from 'react'
+import { supabase, createUserProfileSafely } from '../lib/supabase'
+import type { User } from '@supabase/supabase-js'
 
 export function useAuth() {
-  const [authState, setAuthState] = useState<AuthState>({
-    user: null,
-    profile: null,
-    loading: true,
-    error: null
-  })
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    let mounted = true
-
-    const getInitialSession = async () => {
+    // 初期認証状態を取得
+    const getInitialUser = async () => {
       try {
-        // デモモードのチェック
-        const demoMode = localStorage.getItem('demoMode')
-        const demoSession = localStorage.getItem('demoSession')
-        
-        if (demoMode === 'true' && demoSession) {
-          try {
-            const session = JSON.parse(demoSession)
-            const demoProfile = JSON.parse(localStorage.getItem('userProfile') || '{}')
-            
-            if (mounted) {
-              setAuthState({
-                user: session.user,
-                profile: demoProfile,
-                loading: false,
-                error: null
-              })
-            }
-            return
-          } catch (error) {
-            console.error('Demo session parse error:', error)
-            localStorage.removeItem('demoMode')
-            localStorage.removeItem('demoSession')
-            localStorage.removeItem('userProfile')
-          }
-        }
-
-        // 通常の認証チェック
-        const { data: { session }, error } = await supabase.auth.getSession()
-        
-        if (error) {
-          console.error('Session error:', error)
-          if (mounted) {
-            setAuthState({
-              user: null,
-              profile: null,
-              loading: false,
-              error: null
-            })
-          }
-          return
-        }
-
-        if (session?.user) {
-          try {
-            const profile = await getCurrentUserProfile()
-            
-            if (mounted) {
-              setAuthState({
-                user: session.user,
-                profile,
-                loading: false,
-                error: null
-              })
-            }
-          } catch (profileError) {
-            console.error('Profile fetch error:', profileError)
-            if (mounted) {
-              setAuthState({
-                user: session.user,
-                profile: null,
-                loading: false,
-                error: null
-              })
-            }
-          }
-        } else {
-          if (mounted) {
-            setAuthState({
-              user: null,
-              profile: null,
-              loading: false,
-              error: null
-            })
-          }
-        }
-      } catch (error) {
-        console.error('Auth initialization error:', error)
-        if (mounted) {
-          setAuthState({
-            user: null,
-            profile: null,
-            loading: false,
-            error: null
-          })
-        }
+        const { data: { user }, error } = await supabase.auth.getUser()
+        if (error) throw error
+        setUser(user)
+      } catch (err) {
+        console.error('Initial auth error:', err)
+        setError(err instanceof Error ? err.message : 'Auth error')
+      } finally {
+        setLoading(false)
       }
     }
 
-    getInitialSession()
+    getInitialUser()
 
-    // 認証状態の変更を監視
+    // 認証状態変更を監視
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state change:', event, session?.user?.id)
-        
-        if (!mounted) return
+        console.log('Auth event:', event)
+        setUser(session?.user || null)
+        setError(null)
+        setLoading(false)
 
+        // プロファイル作成は重複チェック付きで実行
         if (event === 'SIGNED_IN' && session?.user) {
-          try {
-            const profile = await getCurrentUserProfile()
-            setAuthState({
-              user: session.user,
-              profile,
-              loading: false,
-              error: null
-            })
-          } catch (error) {
-            console.error('Profile fetch on sign in error:', error)
-            setAuthState({
-              user: session.user,
-              profile: null,
-              loading: false,
-              error: null
-            })
-          }
-        } else if (event === 'SIGNED_OUT') {
-          setAuthState({
-            user: null,
-            profile: null,
-            loading: false,
-            error: null
-          })
-        } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-          try {
-            const profile = await getCurrentUserProfile()
-            setAuthState(prev => ({
-              ...prev,
-              user: session.user,
-              profile,
-              error: null
-            }))
-          } catch (error) {
-            console.error('Profile fetch on token refresh error:', error)
-            setAuthState(prev => ({
-              ...prev,
-              user: session.user,
-              error: null
-            }))
-          }
+          await createUserProfileSafely(session.user)
         }
       }
     )
 
-    return () => {
-      mounted = false
-      subscription.unsubscribe()
-    }
+    return () => subscription.unsubscribe()
   }, [])
 
   const signIn = async (email: string, password: string) => {
+    setLoading(true)
+    setError(null)
     try {
-      setAuthState(prev => ({ ...prev, loading: true, error: null }))
-
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
-        password,
+        password
       })
-
-      if (error) {
-        setAuthState(prev => ({ ...prev, loading: false, error: error.message }))
-        return { success: false, error: error.message }
-      }
-
-      if (data.user) {
-        try {
-          const profile = await getCurrentUserProfile()
-          setAuthState({
-            user: data.user,
-            profile,
-            loading: false,
-            error: null
-          })
-          return { success: true, user: data.user, profile }
-        } catch (profileError) {
-          console.error('Profile fetch error after sign in:', profileError)
-          setAuthState({
-            user: data.user,
-            profile: null,
-            loading: false,
-            error: null
-          })
-          return { success: true, user: data.user, profile: null }
-        }
-      }
-
-      return { success: false, error: 'Unknown error occurred' }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Sign in failed'
-      setAuthState(prev => ({ ...prev, loading: false, error: errorMessage }))
+      if (error) throw error
+      return { success: true }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Sign in failed'
+      setError(errorMessage)
       return { success: false, error: errorMessage }
+    } finally {
+      setLoading(false)
     }
   }
 
-  const signUp = async (email: string, password: string, profileData?: {
-    full_name: string
-    company_name: string
-    position: string
-    phone: string
-  }) => {
+  const signUp = async (email: string, password: string) => {
+    setLoading(true)
+    setError(null)
     try {
-      setAuthState(prev => ({ ...prev, loading: true, error: null }))
-
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}`,
-          data: profileData ? {
-            full_name: profileData.full_name,
-            company_name: profileData.company_name,
-            position: profileData.position,
-            phone: profileData.phone
-          } : undefined
-        }
+        password
       })
-
-      if (error) {
-        setAuthState(prev => ({ ...prev, loading: false, error: error.message }))
-        return { success: false, error: error.message }
-      }
-
-      // ユーザー登録成功時にプロフィールを作成
-      if (data.user && profileData) {
-        try {
-          const { data: newProfile, error: profileError } = await supabase
-            .from('user_profiles')
-            .insert({
-              id: data.user.id,
-              email: data.user.email || '',
-              full_name: profileData.full_name,
-              company_name: profileData.company_name,
-              position: profileData.position,
-              phone: profileData.phone,
-              department: '',
-              role: 'user',
-              onboarding_completed: false
-            })
-            .select()
-            .single()
-
-          if (profileError) {
-            console.error('Profile creation error:', profileError)
-          }
-        } catch (profileError) {
-          console.error('Profile creation error:', profileError)
-        }
-      }
-
-      setAuthState(prev => ({ ...prev, loading: false }))
-      return { success: true, user: data.user }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Sign up failed'
-      setAuthState(prev => ({ ...prev, loading: false, error: errorMessage }))
+      if (error) throw error
+      return { success: true }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Sign up failed'
+      setError(errorMessage)
       return { success: false, error: errorMessage }
+    } finally {
+      setLoading(false)
     }
   }
 
   const signOut = async () => {
+    setLoading(true)
     try {
-      setAuthState(prev => ({ ...prev, loading: true, error: null }))
-
-      // デモモードの場合
-      if (localStorage.getItem('demoMode') === 'true') {
-        localStorage.removeItem('demoMode')
-        localStorage.removeItem('demoSession')
-        localStorage.removeItem('userProfile')
-        setAuthState({
-          user: null,
-          profile: null,
-          loading: false,
-          error: null
-        })
-        return { success: true }
-      }
-
       const { error } = await supabase.auth.signOut()
+      if (error) throw error
       
-      if (error) {
-        setAuthState(prev => ({ ...prev, loading: false, error: error.message }))
-        return { success: false, error: error.message }
-      }
-
       // ローカルストレージのクリア
       localStorage.removeItem('userProfile')
+      localStorage.removeItem('demoMode')
+      localStorage.removeItem('demoSession')
       
-      setAuthState({
-        user: null,
-        profile: null,
-        loading: false,
-        error: null
-      })
-
       return { success: true }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Sign out failed'
-      setAuthState(prev => ({ ...prev, loading: false, error: errorMessage }))
-      return { success: false, error: errorMessage }
-    }
-  }
-
-  const updateProfile = async (updates: Partial<UserProfile>) => {
-    try {
-      setAuthState(prev => ({ ...prev, loading: true, error: null }))
-
-      if (!authState.user) {
-        throw new Error('User not authenticated')
-      }
-
-      // プロフィールの作成または更新
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .upsert({
-          id: authState.user.id,
-          email: authState.user.email || '',
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single()
-
-      if (error) {
-        setAuthState(prev => ({ ...prev, loading: false, error: error.message }))
-        return { success: false, error: error.message }
-      }
-
-      // 組織が設定されていない場合は作成
-      if (!data.default_organization_id && data.company_name) {
-        try {
-          const { data: organization, error: orgError } = await supabase
-            .from('organizations')
-            .insert({
-              name: data.company_name,
-              description: `${data.company_name}の組織`,
-              owner_id: authState.user.id
-            })
-            .select()
-            .single()
-
-          if (!orgError && organization) {
-            // プロフィールに組織IDを設定
-            const { data: updatedProfile, error: updateError } = await supabase
-              .from('user_profiles')
-              .update({ default_organization_id: organization.id })
-              .eq('id', authState.user.id)
-              .select()
-              .single()
-
-            if (!updateError) {
-              setAuthState(prev => ({
-                ...prev,
-                profile: updatedProfile,
-                loading: false,
-                error: null
-              }))
-              return { success: true, profile: updatedProfile }
-            }
-          }
-        } catch (orgError) {
-          console.error('Organization creation error:', orgError)
-        }
-      }
-
-      setAuthState(prev => ({
-        ...prev,
-        profile: data,
-        loading: false,
-        error: null
-      }))
-
-      return { success: true, profile: data }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Profile update failed'
-      setAuthState(prev => ({ ...prev, loading: false, error: errorMessage }))
-      return { success: false, error: errorMessage }
+    } catch (err) {
+      console.error('Sign out error:', err)
+      return { success: false, error: err instanceof Error ? err.message : 'Sign out failed' }
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -417,14 +118,13 @@ export function useAuth() {
   }
 
   return {
-    ...authState,
+    user,
+    loading,
+    error,
     signIn,
     signUp,
     signOut,
-    updateProfile,
     resetPassword,
-    isAuthenticated: !!authState.user,
-    isEmailConfirmed: !!authState.user?.email_confirmed_at || localStorage.getItem('demoMode') === 'true',
-    isOnboardingCompleted: !!authState.profile?.onboarding_completed || localStorage.getItem('demoMode') === 'true'
+    isAuthenticated: !!user
   }
 }

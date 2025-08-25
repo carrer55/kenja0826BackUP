@@ -19,7 +19,10 @@ export const supabase = (() => {
         storageKey: 'sb-auth-token',
         storage: window.localStorage,
         autoRefreshToken: true,
-        detectSessionInUrl: false
+        detectSessionInUrl: true
+      },
+      db: {
+        schema: 'public'
       }
     })
   }
@@ -31,7 +34,7 @@ export default supabase
 // 型定義
 export interface UserProfile {
   id: string
-  email: string
+  email: string | null
   full_name: string | null
   company_name: string | null
   phone: string | null
@@ -73,6 +76,37 @@ export interface Application {
   updated_at: string
 }
 
+// 安全なプロフィール作成（重複回避）
+export const createUserProfileSafely = async (user: any) => {
+  try {
+    // まず既存プロファイルを確認
+    const { data: existingProfile, error: fetchError } = await supabase
+      .from('user_profiles')
+      .select('id')
+      .eq('id', user.id)
+      .single()
+
+    // プロファイルが存在しない場合のみ作成
+    if (fetchError && fetchError.code === 'PGRST116') {
+      const { error: insertError } = await supabase
+        .from('user_profiles')
+        .insert({
+          id: user.id,
+          email: user.email,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+
+      if (insertError && insertError.code !== '23505') {
+        // 23505は重複エラー（無視してOK）
+        console.error('Profile creation error:', insertError)
+      }
+    }
+  } catch (err) {
+    console.error('Profile creation failed:', err)
+  }
+}
+
 // 認証関連のヘルパー関数
 export const getCurrentUser = async () => {
   try {
@@ -109,70 +143,6 @@ export const getCurrentUserProfile = async () => {
     console.error('Get user profile failed:', error)
     return null
   }
-}
-
-export const createUserProfile = async (userId: string, profileData: Partial<UserProfile>) => {
-  try {
-    const user = await getCurrentUser()
-    if (!user) throw new Error('User not authenticated')
-
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .insert({
-        id: userId,
-        email: user.email || '',
-        ...profileData,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .select()
-      .single()
-
-    if (error) throw error
-    return data
-  } catch (error) {
-    console.error('Create user profile failed:', error)
-    throw error
-  }
-}
-
-export const updateUserProfile = async (updates: Partial<UserProfile>) => {
-  const user = await getCurrentUser()
-  if (!user) throw new Error('User not authenticated')
-
-  const { data, error } = await supabase
-    .from('user_profiles')
-    .update({
-      ...updates,
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', user.id)
-    .select()
-    .single()
-
-  if (error) throw error
-  return data
-}
-
-export const createOrganization = async (name: string, description?: string) => {
-  const user = await getCurrentUser()
-  if (!user) throw new Error('User not authenticated')
-
-  const { data, error } = await supabase
-    .from('organizations')
-    .insert({
-      name,
-      description: description || null,
-      owner_id: user.id,
-      settings: {},
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    })
-    .select()
-    .single()
-
-  if (error) throw error
-  return data
 }
 
 export const signOut = async () => {

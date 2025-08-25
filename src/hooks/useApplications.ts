@@ -18,43 +18,16 @@ export interface Application {
   rejection_reason: string | null
   created_at: string
   updated_at: string
-  
-  // リレーション
-  user_profiles?: {
-    full_name: string
-    department: string
-    position: string
-  }
-  organizations?: {
-    name: string
-  }
-  expense_items?: Array<{
-    id: string
-    category_id: string | null
-    date: string
-    amount: number
-    description: string | null
-    receipt_url: string | null
-  }>
-  business_trip_details?: Array<{
-    id: string
-    start_date: string
-    end_date: string
-    purpose: string
-    estimated_daily_allowance: number
-    estimated_transportation: number
-    estimated_accommodation: number
-  }>
 }
 
 export function useApplications() {
   const [applications, setApplications] = useState<Application[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { user, profile } = useAuth()
+  const { user } = useAuth()
 
   useEffect(() => {
-    if (user && profile) {
+    if (user) {
       fetchApplications()
     } else {
       // デモモードの場合はサンプルデータを表示
@@ -80,7 +53,7 @@ export function useApplications() {
         ])
       }
     }
-  }, [user, profile])
+  }, [user])
 
   const fetchApplications = async () => {
     try {
@@ -94,20 +67,8 @@ export function useApplications() {
 
       const { data, error: fetchError } = await supabase
         .from('applications')
-        .select(`
-          *,
-          user_profiles (
-            full_name,
-            department,
-            position
-          ),
-          organizations (
-            name
-          ),
-          expense_items (*),
-          business_trip_details (*)
-        `)
-        .eq('user_id', user?.id)
+        .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
       if (fetchError) {
@@ -135,40 +96,11 @@ export function useApplications() {
         throw new Error('User not authenticated')
       }
 
-      // 組織IDを取得または作成
-      let organizationId = profile?.default_organization_id
-      
-      if (!organizationId && profile?.company_name) {
-        try {
-          const { data: newOrg, error: orgError } = await supabase
-            .from('organizations')
-            .insert({
-              name: profile.company_name,
-              owner_id: user.id,
-              description: `${profile.company_name}の組織`
-            })
-            .select()
-            .single()
-
-          if (!orgError && newOrg) {
-            organizationId = newOrg.id
-            
-            // プロフィールに組織IDを設定
-            await supabase
-              .from('user_profiles')
-              .update({ default_organization_id: organizationId })
-              .eq('id', user.id)
-          }
-        } catch (orgError) {
-          console.error('Organization creation error:', orgError)
-        }
-      }
-
       const { data: newApp, error: createError } = await supabase
         .from('applications')
         .insert({
           user_id: user.id,
-          organization_id: organizationId,
+          organization_id: null, // 後で組織機能を実装
           type,
           title,
           description: data.description || null,
@@ -183,45 +115,6 @@ export function useApplications() {
         throw createError
       }
 
-      // 出張申請の場合、詳細データを作成
-      if (type === 'business_trip' && data.tripDetails) {
-        const { error: tripError } = await supabase
-          .from('business_trip_details')
-          .insert({
-            application_id: newApp.id,
-            start_date: data.tripDetails.startDate,
-            end_date: data.tripDetails.endDate,
-            purpose: data.tripDetails.purpose,
-            participants: data.tripDetails.participants,
-            estimated_daily_allowance: data.tripDetails.estimatedDailyAllowance || 0,
-            estimated_transportation: data.tripDetails.estimatedTransportation || 0,
-            estimated_accommodation: data.tripDetails.estimatedAccommodation || 0
-          })
-
-        if (tripError) {
-          console.error('Trip details creation error:', tripError)
-        }
-      }
-
-      // 経費申請の場合、経費項目を作成
-      if (type === 'expense' && data.expenseItems) {
-        const expenseItems = data.expenseItems.map((item: any) => ({
-          application_id: newApp.id,
-          date: item.date,
-          amount: item.amount,
-          description: item.description,
-          category_id: null // カテゴリIDは後で実装
-        }))
-
-        const { error: expenseError } = await supabase
-          .from('expense_items')
-          .insert(expenseItems)
-
-        if (expenseError) {
-          console.error('Expense items creation error:', expenseError)
-        }
-      }
-
       await fetchApplications()
       return { success: true, application: newApp }
     } catch (err) {
@@ -233,67 +126,12 @@ export function useApplications() {
     }
   }
 
-  const updateApplication = async (id: string, updates: Partial<Application>) => {
-    try {
-      const { data, error: updateError } = await supabase
-        .from('applications')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .select()
-        .single()
-
-      if (updateError) {
-        throw updateError
-      }
-
-      await fetchApplications()
-      return { success: true, application: data }
-    } catch (err) {
-      console.error('Application update error:', err)
-      return { 
-        success: false, 
-        error: err instanceof Error ? err.message : 'Failed to update application' 
-      }
-    }
-  }
-
-  const submitApplication = async (id: string) => {
-    try {
-      const { data, error: submitError } = await supabase
-        .from('applications')
-        .update({ 
-          status: 'pending', 
-          submitted_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .select()
-        .single()
-
-      if (submitError) {
-        throw submitError
-      }
-
-      await fetchApplications()
-      return { success: true, application: data }
-    } catch (err) {
-      console.error('Application submission error:', err)
-      return { 
-        success: false, 
-        error: err instanceof Error ? err.message : 'Failed to submit application' 
-      }
-    }
-  }
-
-  const deleteApplication = async (id: string) => {
+  const deleteApplication = async (applicationId: string) => {
     try {
       const { error: deleteError } = await supabase
         .from('applications')
         .delete()
-        .eq('id', id)
+        .eq('id', applicationId)
 
       if (deleteError) {
         throw deleteError
@@ -355,8 +193,6 @@ export function useApplications() {
     loading,
     error,
     createApplication,
-    updateApplication,
-    submitApplication,
     deleteApplication,
     handleApproval,
     refreshApplications: fetchApplications
