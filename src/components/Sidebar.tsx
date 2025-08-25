@@ -127,12 +127,11 @@ function Sidebar({ isOpen, onClose, onNavigate, currentView = 'dashboard' }: Sid
           </div>
           <button 
             onClick={handleLogout}
-            disabled={authLoading}
             className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-white/30 hover:bg-white/50 rounded-lg border border-white/40 transition-all duration-200 backdrop-blur-sm hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <LogOut className="w-4 h-4 text-slate-700" />
             <span className="text-slate-700 text-sm">
-              {authLoading ? 'ログアウト中...' : 'ログアウト'}
+              ログアウト
             </span>
           </button>
         </div>
